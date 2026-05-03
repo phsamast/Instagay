@@ -1,0 +1,45 @@
+name: clone_mxh
+description: Mạng xã hội clone Instagram
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Firebase
+  firebase_core: ^3.1.0
+  firebase_auth: ^5.1.0
+  cloud_firestore: ^5.1.0
+  firebase_storage: ^12.1.0
+
+  # Google Sign In
+  google_sign_in: ^6.2.1
+
+  # Hình ảnh
+  image_picker: ^1.1.2
+  cached_network_image: ^3.3.1
+
+  # State Management
+  provider: ^6.1.2
+
+  # Tiện ích
+  uuid: ^4.4.0
+  timeago: ^3.6.1
+  intl: ^0.19.0
+
+  # UI
+  cupertino_icons: ^1.0.6
+  flutter_svg: ^2.0.10+1
+
+http: ^1.2.1
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
