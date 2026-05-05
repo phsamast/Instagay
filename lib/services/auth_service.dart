@@ -43,6 +43,7 @@ class AuthService {
         bio: '',
         followers: [],
         following: [],
+        savedPosts: [],
       );
 
       await _db

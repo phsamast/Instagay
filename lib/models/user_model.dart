@@ -8,6 +8,7 @@ class UserModel {
   final String bio;
   final List followers;
   final List following;
+  final List savedPosts;
 
   UserModel({
     required this.uid,
@@ -17,6 +18,7 @@ class UserModel {
     required this.bio,
     required this.followers,
     required this.following,
+    required this.savedPosts,
   });
 
   factory UserModel.fromDoc(DocumentSnapshot doc) {
@@ -29,6 +31,7 @@ class UserModel {
       bio: data['bio'] ?? '',
       followers: data['followers'] ?? [],
       following: data['following'] ?? [],
+      savedPosts: data['savedPosts'] ?? [],
     );
   }
 
@@ -42,6 +45,7 @@ class UserModel {
       'bio': bio,
       'followers': followers,
       'following': following,
+      'savedPosts': savedPosts,
     };
   }
 
@@ -53,6 +57,7 @@ class UserModel {
     String? bio,
     List? followers,
     List? following,
+    List? savedPosts,
   }) {
     return UserModel(
       uid: uid ?? this.uid,
@@ -62,6 +67,7 @@ class UserModel {
       bio: bio ?? this.bio,
       followers: followers ?? this.followers,
       following: following ?? this.following,
+      savedPosts: savedPosts ?? this.savedPosts,
     );
   }
 }

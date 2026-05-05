@@ -6,6 +6,7 @@ import 'package:video_player/video_player.dart';
 import '../../providers/user_provider.dart';
 import '../../services/post_service.dart';
 import '../../services/story_service.dart';
+import '../home/home_screen.dart';
 
 class UploadScreen extends StatefulWidget {
   const UploadScreen({super.key});
@@ -119,6 +120,10 @@ class _UploadScreenState extends State<UploadScreen>
         });
         _captionController.clear();
         _showSnackBar('Đăng bài thành công! 🎉');
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const HomeScreen()),
+          (route) => false,
+        );
       } else {
         _showSnackBar('Lỗi: $result');
       }
@@ -146,6 +151,10 @@ class _UploadScreenState extends State<UploadScreen>
       if (result == 'success') {
         setState(() => _imageFiles = []);
         _showSnackBar('Story đã được đăng! ✨');
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const HomeScreen()),
+          (route) => false,
+        );
       } else {
         _showSnackBar('Lỗi: $result');
       }

@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/user_model.dart';
+import 'notification_service.dart';
 
 class UserService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
@@ -17,6 +18,19 @@ class UserService {
     await _db.collection('users').doc(targetUserId).update({
       'followers': FieldValue.arrayUnion([currentUserId]),
     });
+
+    // Gửi thông báo Follow
+    final currentUserSnap = await _db.collection('users').doc(currentUserId).get();
+    if (currentUserSnap.exists) {
+      final currentUserData = currentUserSnap.data() as Map<String, dynamic>;
+      NotificationService().sendNotification(
+        toUserId: targetUserId,
+        fromUserId: currentUserId,
+        fromUsername: currentUserData['username'] ?? '',
+        fromUserPhotoUrl: currentUserData['photoUrl'] ?? '',
+        type: 'follow',
+      );
+    }
   }
 
   Future<void> unfollowUser({
@@ -31,6 +45,18 @@ class UserService {
     });
   }
 
+
+  Future<void> savePost(String userId, String postId) async {
+    await _db.collection('users').doc(userId).update({
+      'savedPosts': FieldValue.arrayUnion([postId]),
+    });
+  }
+
+  Future<void> unsavePost(String userId, String postId) async {
+    await _db.collection('users').doc(userId).update({
+      'savedPosts': FieldValue.arrayRemove([postId]),
+    });
+  }
 
   Future<List<UserModel>> searchUsers(String query) async {
     if (query.isEmpty) return [];

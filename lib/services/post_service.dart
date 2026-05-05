@@ -4,6 +4,7 @@ import 'package:uuid/uuid.dart';
 import '../models/post_model.dart';
 import '../models/comment_model.dart';
 import 'storage_service.dart';
+import 'notification_service.dart';
 
 class PostService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
@@ -57,6 +58,23 @@ class PostService {
     return _db
         .collection('posts')
         .orderBy('timestamp', descending: true)
+        .limit(50)
+        .snapshots()
+        .map((snap) => snap.docs.map(PostModel.fromDoc).toList());
+  }
+
+  Stream<List<PostModel>> getFeedPosts(List followingAndMe, int limit) {
+    if (followingAndMe.isEmpty) {
+      return Stream.value([]);
+    }
+    // Firebase whereIn limit is 10
+    final queryList = followingAndMe.take(10).toList();
+    
+    return _db
+        .collection('posts')
+        .where('ownerId', whereIn: queryList)
+        .orderBy('timestamp', descending: true)
+        .limit(limit)
         .snapshots()
         .map((snap) => snap.docs.map(PostModel.fromDoc).toList());
   }
@@ -70,6 +88,18 @@ class PostService {
         .map((snap) => snap.docs.map(PostModel.fromDoc).toList());
   }
 
+  Future<List<PostModel>> getSavedPosts(List savedIds) async {
+    if (savedIds.isEmpty) return [];
+    final List<PostModel> posts = [];
+    for (var i = 0; i < savedIds.length; i += 10) {
+      final chunk = savedIds.skip(i).take(10).toList();
+      final snap = await _db.collection('posts').where('postId', whereIn: chunk).get();
+      posts.addAll(snap.docs.map(PostModel.fromDoc));
+    }
+    posts.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+    return posts;
+  }
+
   // ==================== LIKE ====================
   Future<void> likePost({
     required String postId,
@@ -81,6 +111,25 @@ class PostService {
       await ref.update({'likes.$userId': FieldValue.delete()});
     } else {
       await ref.update({'likes.$userId': true});
+      
+      // Gửi thông báo Like
+      final postSnap = await ref.get();
+      if (postSnap.exists) {
+        final post = PostModel.fromDoc(postSnap);
+        final userSnap = await _db.collection('users').doc(userId).get();
+        if (userSnap.exists) {
+          final userData = userSnap.data() as Map<String, dynamic>;
+          NotificationService().sendNotification(
+            toUserId: post.ownerId,
+            fromUserId: userId,
+            fromUsername: userData['username'] ?? '',
+            fromUserPhotoUrl: userData['photoUrl'] ?? '',
+            type: 'like',
+            postId: postId,
+            postMediaUrl: post.mediaUrls.isNotEmpty ? post.mediaUrls.first : null,
+          );
+        }
+      }
     }
   }
 
@@ -108,6 +157,22 @@ class PostService {
         .collection('comments')
         .doc(commentId)
         .set(comment.toMap());
+
+    // Gửi thông báo Comment
+    final postSnap = await _db.collection('posts').doc(postId).get();
+    if (postSnap.exists) {
+      final post = PostModel.fromDoc(postSnap);
+      NotificationService().sendNotification(
+        toUserId: post.ownerId,
+        fromUserId: userId,
+        fromUsername: username,
+        fromUserPhotoUrl: userPhotoUrl,
+        type: 'comment',
+        postId: postId,
+        postMediaUrl: post.mediaUrls.isNotEmpty ? post.mediaUrls.first : null,
+        commentText: text,
+      );
+    }
   }
 
   Stream<List<CommentModel>> getComments(String postId) {
