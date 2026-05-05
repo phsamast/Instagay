@@ -2,9 +2,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import '../../providers/user_provider.dart';
 import '../../services/user_service.dart';
+import '../../services/storage_service.dart'; // ← Dùng Cloudinary
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -47,12 +47,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
     String? photoUrl;
     if (_newAvatar != null) {
-      // Upload ảnh đại diện mới
-      final ref = FirebaseStorage.instance
-          .ref()
-          .child('avatars/${user.uid}.jpg');
-      await ref.putFile(_newAvatar!);
-      photoUrl = await ref.getDownloadURL();
+      // ← Upload qua Cloudinary thay vì Firebase Storage
+      photoUrl = await StorageService.uploadImage(_newAvatar!);
+      if (photoUrl == null) {
+        if (mounted) {
+          setState(() => _isLoading = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Lỗi upload ảnh, thử lại!')),
+          );
+        }
+        return;
+      }
     }
 
     await UserService().updateProfile(
@@ -136,10 +141,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             ),
 
             const SizedBox(height: 8),
-            const Text('Đổi ảnh đại diện', style: TextStyle(color: Colors.blue)),
+            const Text(
+              'Đổi ảnh đại diện',
+              style: TextStyle(color: Colors.blue),
+            ),
 
             const SizedBox(height: 24),
 
+            // Bio
             TextField(
               controller: _bioController,
               maxLines: 3,

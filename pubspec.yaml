@@ -19,9 +19,11 @@ dependencies:
   # Google Sign In
   google_sign_in: ^6.2.1
 
-  # Hình ảnh
+  # Hình ảnh & Video
   image_picker: ^1.1.2
   cached_network_image: ^3.3.1
+  video_player: ^2.8.6
+  chewie: ^1.7.5
 
   # State Management
   provider: ^6.1.2
@@ -30,12 +32,12 @@ dependencies:
   uuid: ^4.4.0
   timeago: ^3.6.1
   intl: ^0.19.0
+  http: ^1.2.1
 
   # UI
   cupertino_icons: ^1.0.6
   flutter_svg: ^2.0.10+1
 
-http: ^1.2.1
 dev_dependencies:
   flutter_test:
     sdk: flutter

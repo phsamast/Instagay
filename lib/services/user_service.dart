@@ -51,7 +51,23 @@ class UserService {
   }) async {
     final data = <String, dynamic>{'bio': bio};
     if (photoUrl != null) data['photoUrl'] = photoUrl;
+
+    // Cập nhật profile user
     await _db.collection('users').doc(userId).update(data);
+
+    // Cập nhật ảnh đại diện trên tất cả bài đăng cũ
+    if (photoUrl != null) {
+      final posts = await _db
+          .collection('posts')
+          .where('ownerId', isEqualTo: userId)
+          .get();
+
+      final batch = _db.batch();
+      for (final post in posts.docs) {
+        batch.update(post.reference, {'userPhotoUrl': photoUrl});
+      }
+      await batch.commit();
+    }
   }
 
 

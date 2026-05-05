@@ -2,122 +2,137 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 import 'package:timeago/timeago.dart' as timeago;
+import 'package:video_player/video_player.dart';
+import 'package:chewie/chewie.dart';
 import '../models/post_model.dart';
 import '../providers/user_provider.dart';
 import '../services/post_service.dart';
 import '../screens/feed/comment_screen.dart';
 import '../screens/profile/profile_screen.dart';
 
-class PostCard extends StatelessWidget {
+class PostCard extends StatefulWidget {
   final PostModel post;
-
   const PostCard({super.key, required this.post});
+
+  @override
+  State<PostCard> createState() => _PostCardState();
+}
+
+class _PostCardState extends State<PostCard> {
+  int _currentImageIndex = 0;
+  VideoPlayerController? _videoController;
+  ChewieController? _chewieController;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.post.isVideo && widget.post.mediaUrl.isNotEmpty) {
+      _initVideo();
+    }
+  }
+
+  Future<void> _initVideo() async {
+    _videoController = VideoPlayerController.networkUrl(
+      Uri.parse(widget.post.mediaUrl),
+    );
+    await _videoController!.initialize();
+    _chewieController = ChewieController(
+      videoPlayerController: _videoController!,
+      autoPlay: false,
+      looping: false,
+      aspectRatio: _videoController!.value.aspectRatio,
+      placeholder: Container(color: Colors.black),
+    );
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    _videoController?.dispose();
+    _chewieController?.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final currentUser = context.watch<UserProvider>().user;
-    final isLiked = currentUser != null && post.isLikedBy(currentUser.uid);
+    final isLiked = currentUser != null && widget.post.isLikedBy(currentUser.uid);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // ========== HEADER: Ảnh đại diện + tên user ==========
+        // ========== HEADER ==========
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           child: Row(
             children: [
               GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => ProfileScreen(userId: post.ownerId),
-                    ),
-                  );
-                },
+                onTap: () => Navigator.push(context, MaterialPageRoute(
+                  builder: (_) => ProfileScreen(userId: widget.post.ownerId),
+                )),
                 child: CircleAvatar(
                   radius: 18,
-                  backgroundImage: post.userPhotoUrl.isNotEmpty
-                      ? CachedNetworkImageProvider(post.userPhotoUrl)
+                  backgroundImage: widget.post.userPhotoUrl.isNotEmpty
+                      ? CachedNetworkImageProvider(widget.post.userPhotoUrl)
                       : null,
-                  child: post.userPhotoUrl.isEmpty
-                      ? const Icon(Icons.person)
-                      : null,
+                  child: widget.post.userPhotoUrl.isEmpty
+                      ? const Icon(Icons.person) : null,
                 ),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: GestureDetector(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => ProfileScreen(userId: post.ownerId),
-                      ),
-                    );
-                  },
+                  onTap: () => Navigator.push(context, MaterialPageRoute(
+                    builder: (_) => ProfileScreen(userId: widget.post.ownerId),
+                  )),
                   child: Text(
-                    post.username,
+                    widget.post.username,
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                 ),
               ),
-              // Nút 3 chấm (xóa bài nếu là chủ)
-              if (currentUser?.uid == post.ownerId)
+              // Badge video
+              if (widget.post.isVideo)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.black,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Text(
+                    'VIDEO',
+                    style: TextStyle(color: Colors.white, fontSize: 10),
+                  ),
+                ),
+              if (currentUser?.uid == widget.post.ownerId)
                 PopupMenuButton(
                   itemBuilder: (_) => [
                     const PopupMenuItem(value: 'delete', child: Text('Xóa bài')),
                   ],
                   onSelected: (value) {
-                    if (value == 'delete') {
-                      PostService().deletePost(post.postId);
-                    }
+                    if (value == 'delete') PostService().deletePost(widget.post.postId);
                   },
                 ),
             ],
           ),
         ),
 
-        // ========== ẢNH BÀI ĐĂNG ==========
-        GestureDetector(
-          onDoubleTap: () {
-            // Double tap để like
-            if (currentUser != null) {
-              PostService().likePost(
-                postId: post.postId,
-                userId: currentUser.uid,
-                isLiked: isLiked,
-              );
-            }
-          },
-          child: CachedNetworkImage(
-            imageUrl: post.mediaUrl,
-            width: double.infinity,
-            fit: BoxFit.cover,
-            placeholder: (_, __) => Container(
-              height: 300,
-              color: Colors.grey[200],
-              child: const Center(child: CircularProgressIndicator()),
-            ),
-            errorWidget: (_, __, ___) => Container(
-              height: 300,
-              color: Colors.grey[200],
-              child: const Icon(Icons.error),
-            ),
-          ),
-        ),
+        // ========== MEDIA (ảnh hoặc video) ==========
+        if (widget.post.isVideo)
+          _buildVideoPlayer()
+        else
+          _buildImageCarousel(currentUser),
 
         // ========== ACTION BUTTONS ==========
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 4),
           child: Row(
             children: [
-              // Nút Like
               IconButton(
                 onPressed: () {
                   if (currentUser != null) {
                     PostService().likePost(
-                      postId: post.postId,
+                      postId: widget.post.postId,
                       userId: currentUser.uid,
                       isLiked: isLiked,
                     );
@@ -128,34 +143,34 @@ class PostCard extends StatelessWidget {
                   color: isLiked ? Colors.red : Colors.black,
                 ),
               ),
-              // Nút Comment
               IconButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => CommentScreen(post: post),
-                    ),
-                  );
-                },
+                onPressed: () => Navigator.push(context, MaterialPageRoute(
+                  builder: (_) => CommentScreen(post: widget.post),
+                )),
                 icon: const Icon(Icons.chat_bubble_outline),
               ),
               const Spacer(),
+              // Chỉ số ảnh (nếu nhiều ảnh)
+              if (widget.post.isMultiple)
+                Text(
+                  '${_currentImageIndex + 1}/${widget.post.mediaUrls.length}',
+                  style: const TextStyle(color: Colors.grey, fontSize: 12),
+                ),
             ],
           ),
         ),
 
-        // ========== SỐ LƯỢT LIKE ==========
+        // ========== LƯỢT LIKE ==========
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12),
           child: Text(
-            '${post.likeCount} lượt thích',
+            '${widget.post.likeCount} lượt thích',
             style: const TextStyle(fontWeight: FontWeight.bold),
           ),
         ),
 
         // ========== MÔ TẢ ==========
-        if (post.description.isNotEmpty)
+        if (widget.post.description.isNotEmpty)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             child: RichText(
@@ -163,10 +178,10 @@ class PostCard extends StatelessWidget {
                 style: const TextStyle(color: Colors.black),
                 children: [
                   TextSpan(
-                    text: '${post.username} ',
+                    text: '${widget.post.username} ',
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
-                  TextSpan(text: post.description),
+                  TextSpan(text: widget.post.description),
                 ],
               ),
             ),
@@ -176,12 +191,107 @@ class PostCard extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
           child: Text(
-            timeago.format(post.timestamp.toDate(), locale: 'vi'),
+            timeago.format(widget.post.timestamp.toDate(), locale: 'vi'),
             style: const TextStyle(color: Colors.grey, fontSize: 12),
           ),
         ),
 
         const Divider(height: 8),
+      ],
+    );
+  }
+
+  // Widget hiển thị video với chewie player
+  Widget _buildVideoPlayer() {
+    if (_chewieController != null && _videoController!.value.isInitialized) {
+      return AspectRatio(
+        aspectRatio: _videoController!.value.aspectRatio,
+        child: Chewie(controller: _chewieController!),
+      );
+    }
+    return Container(
+      height: 300,
+      color: Colors.black,
+      child: const Center(
+        child: CircularProgressIndicator(color: Colors.white),
+      ),
+    );
+  }
+
+  // Widget hiển thị ảnh (1 hoặc nhiều ảnh với swipe)
+  Widget _buildImageCarousel(currentUser) {
+    if (widget.post.mediaUrls.isEmpty) return const SizedBox.shrink();
+
+    if (widget.post.mediaUrls.length == 1) {
+      return GestureDetector(
+        onDoubleTap: () {
+          if (currentUser != null) {
+            PostService().likePost(
+              postId: widget.post.postId,
+              userId: currentUser.uid,
+              isLiked: currentUser != null && widget.post.isLikedBy(currentUser.uid),
+            );
+          }
+        },
+        child: CachedNetworkImage(
+          imageUrl: widget.post.mediaUrls.first,
+          width: double.infinity,
+          fit: BoxFit.cover,
+          placeholder: (_, __) => Container(
+            height: 300,
+            color: Colors.grey[200],
+            child: const Center(child: CircularProgressIndicator()),
+          ),
+          errorWidget: (_, __, ___) => Container(
+            height: 300,
+            color: Colors.grey[200],
+            child: const Icon(Icons.error),
+          ),
+        ),
+      );
+    }
+
+    // Nhiều ảnh → PageView (swipe)
+    return Stack(
+      children: [
+        SizedBox(
+          height: 300,
+          child: PageView.builder(
+            itemCount: widget.post.mediaUrls.length,
+            onPageChanged: (index) => setState(() => _currentImageIndex = index),
+            itemBuilder: (_, index) => CachedNetworkImage(
+              imageUrl: widget.post.mediaUrls[index],
+              fit: BoxFit.cover,
+              placeholder: (_, __) => Container(
+                color: Colors.grey[200],
+                child: const Center(child: CircularProgressIndicator()),
+              ),
+            ),
+          ),
+        ),
+        // Dots indicator
+        Positioned(
+          bottom: 8,
+          left: 0,
+          right: 0,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(
+              widget.post.mediaUrls.length,
+                  (index) => Container(
+                margin: const EdgeInsets.symmetric(horizontal: 3),
+                width: _currentImageIndex == index ? 8 : 6,
+                height: _currentImageIndex == index ? 8 : 6,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: _currentImageIndex == index
+                      ? Colors.white
+                      : Colors.white.withOpacity(0.5),
+                ),
+              ),
+            ),
+          ),
+        ),
       ],
     );
   }
