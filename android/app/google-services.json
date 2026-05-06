@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "608364276028",
+    "project_id": "clonemxh",
+    "storage_bucket": "clonemxh.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:608364276028:android:77b9307902609df12fd639",
+        "android_client_info": {
+          "package_name": "com.example.clone_mxh"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA5AvnTTKwE78VsgDjbOTsMMwWLsKjh2aA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -44,8 +44,3 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
-# Firebase - KHÔNG push lên git (chứa API keys)
-google-services.json
-firebase_options.dart
-firebase.json
-.firebaserc

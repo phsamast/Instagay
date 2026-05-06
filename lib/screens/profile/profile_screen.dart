@@ -146,22 +146,29 @@ class ProfileScreen extends StatelessWidget {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              CachedNetworkImage(
-                imageUrl: post.mediaUrl,
-                fit: BoxFit.cover,
-              ),
               if (post.isVideo)
-                const Positioned(
-                  top: 8,
-                  right: 8,
-                  child: Icon(Icons.play_arrow, color: Colors.white),
+                Container(
+                  color: Colors.black87,
+                  child: const Center(
+                    child: Icon(Icons.videocam, color: Colors.white54, size: 40),
+                  ),
                 )
-              else if (post.isMultiple)
-                const Positioned(
-                  top: 8,
-                  right: 8,
-                  child: Icon(Icons.collections, color: Colors.white, size: 20),
+              else ...[
+                CachedNetworkImage(
+                  imageUrl: post.mediaUrl,
+                  fit: BoxFit.cover,
+                  errorWidget: (context, url, error) => Container(
+                    color: Colors.grey[300],
+                    child: const Icon(Icons.error),
+                  ),
                 ),
+                if (post.isMultiple)
+                  const Positioned(
+                    top: 8,
+                    right: 8,
+                    child: Icon(Icons.collections, color: Colors.white, size: 20),
+                  ),
+              ],
             ],
           ),
         );
