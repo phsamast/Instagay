@@ -7,6 +7,7 @@ import '../../providers/user_provider.dart';
 import '../../services/chat_service.dart';
 import '../../services/auth_service.dart';
 import 'chat_screen.dart';
+import 'select_user_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ChatListScreen extends StatelessWidget {
@@ -29,7 +30,19 @@ class ChatListScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Tin nhắn'),
+        title: const Text('Tin nhắn', style: TextStyle(fontWeight: FontWeight.bold)),
+        centerTitle: true,
+        actions: [
+          IconButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const SelectUserScreen()),
+              );
+            },
+            icon: const Icon(Icons.add_circle_outline, size: 28),
+          ),
+        ],
       ),
       body: currentUser == null
           ? const Center(child: CircularProgressIndicator())
@@ -52,12 +65,6 @@ class ChatListScreen extends StatelessWidget {
                   const SizedBox(height: 16),
                   const Text('Chưa có tin nhắn nào'),
                   const SizedBox(height: 8),
-                  TextButton(
-                    onPressed: () {
-                      // Chuyển sang tab tìm kiếm
-                    },
-                    child: const Text('Tìm bạn bè để nhắn tin'),
-                  ),
                 ],
               ),
             );

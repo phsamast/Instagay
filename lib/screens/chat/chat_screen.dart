@@ -5,6 +5,7 @@ import '../../models/user_model.dart';
 import '../../models/message_model.dart';
 import '../../providers/user_provider.dart';
 import '../../services/chat_service.dart';
+import 'select_user_screen.dart';
 
 class ChatScreen extends StatefulWidget {
   final UserModel otherUser;
@@ -80,6 +81,17 @@ class _ChatScreenState extends State<ChatScreen> {
             Text(widget.otherUser.username),
           ],
         ),
+        actions: [
+          IconButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const SelectUserScreen()),
+              );
+            },
+            icon: const Icon(Icons.add_circle_outline),
+          ),
+        ],
       ),
       body: Column(
         children: [

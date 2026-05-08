@@ -104,4 +104,22 @@ class UserService {
         .snapshots()
         .map(UserModel.fromDoc);
   }
+
+  Future<List<UserModel>> getUsersByUids(List<String> uids) async {
+    if (uids.isEmpty) return [];
+    
+    // Firestore whereIn supports up to 30 elements. 
+    // For simplicity, we fetch in chunks if needed, but for followers/following 
+    // we might just fetch the first 30 or implement a more robust chunking.
+    // Let's implement chunking.
+    
+    List<UserModel> users = [];
+    for (var i = 0; i < uids.length; i += 30) {
+      final chunk = uids.sublist(i, i + 30 > uids.length ? uids.length : i + 30);
+      final snap = await _db.collection('users').where('uid', whereIn: chunk).get();
+      users.addAll(snap.docs.map(UserModel.fromDoc));
+    }
+    
+    return users;
+  }
 }
