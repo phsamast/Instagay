@@ -24,4 +24,18 @@ class UserProvider extends ChangeNotifier {
     _user = null;
     notifyListeners();
   }
+
+  void followUserLocal(String targetUserId) {
+    if (_user != null && !_user!.following.contains(targetUserId)) {
+      _user!.following.add(targetUserId);
+      notifyListeners();
+    }
+  }
+
+  void unfollowUserLocal(String targetUserId) {
+    if (_user != null && _user!.following.contains(targetUserId)) {
+      _user!.following.remove(targetUserId);
+      notifyListeners();
+    }
+  }
 }

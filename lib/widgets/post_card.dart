@@ -25,6 +25,18 @@ class _PostCardState extends State<PostCard> {
   VideoPlayerController? _videoController;
   ChewieController? _chewieController;
   bool _showHeart = false;
+  
+  bool? _isLiked;
+  int? _likeCount;
+
+  @override
+  void didUpdateWidget(PostCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.post.postId != widget.post.postId || oldWidget.post != widget.post) {
+      _isLiked = null;
+      _likeCount = null;
+    }
+  }
 
   @override
   void initState() {
@@ -61,8 +73,15 @@ class _PostCardState extends State<PostCard> {
     if (currentUserId == null) return;
     setState(() => _showHeart = true);
     
+    final currentIsLiked = _isLiked ?? widget.post.isLikedBy(currentUserId);
+    final currentLikeCount = _likeCount ?? widget.post.likeCount;
+
     // Nếu chưa like thì mới like, nếu đã like rồi thì double tap không unlike (theo chuẩn Instagram)
-    if (!isLiked) {
+    if (!currentIsLiked) {
+      setState(() {
+        _isLiked = true;
+        _likeCount = currentLikeCount + 1;
+      });
       PostService().likePost(
         postId: widget.post.postId,
         userId: currentUserId,
@@ -78,7 +97,8 @@ class _PostCardState extends State<PostCard> {
   @override
   Widget build(BuildContext context) {
     final currentUser = context.watch<UserProvider>().user;
-    final isLiked = currentUser != null && widget.post.isLikedBy(currentUser.uid);
+    final isLiked = _isLiked ?? (currentUser != null && widget.post.isLikedBy(currentUser.uid));
+    final likeCount = _likeCount ?? widget.post.likeCount;
     final isSaved = currentUser != null && currentUser.savedPosts.contains(widget.post.postId);
 
     return VisibilityDetector(
@@ -174,6 +194,10 @@ class _PostCardState extends State<PostCard> {
                 IconButton(
                   onPressed: () {
                     if (currentUser != null) {
+                      setState(() {
+                        _isLiked = !isLiked;
+                        _likeCount = isLiked ? likeCount - 1 : likeCount + 1;
+                      });
                       PostService().likePost(
                         postId: widget.post.postId,
                         userId: currentUser.uid,
@@ -233,7 +257,7 @@ class _PostCardState extends State<PostCard> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Text(
-              '${widget.post.likeCount} lượt thích',
+              '$likeCount lượt thích',
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
           ),

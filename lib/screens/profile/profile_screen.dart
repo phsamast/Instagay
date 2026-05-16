@@ -303,11 +303,13 @@ class ProfileScreen extends StatelessWidget {
                     currentUserId: currentUser.uid,
                     targetUserId: user.uid,
                   );
+                  context.read<UserProvider>().unfollowUserLocal(user.uid);
                 } else {
                   UserService().followUser(
                     currentUserId: currentUser.uid,
                     targetUserId: user.uid,
                   );
+                  context.read<UserProvider>().followUserLocal(user.uid);
                 }
               },
               style: ElevatedButton.styleFrom(
