@@ -15,7 +15,14 @@ class ChatListScreen extends StatelessWidget {
 
   Future<UserModel?> _getOtherUser(String chatId, String currentUserId) async {
     final parts = chatId.split('_');
-    final otherUserId = parts[0] == currentUserId ? parts[1] : parts[0];
+    String otherUserId;
+    if(parts[0]== currentUserId){
+      otherUserId = parts[1];
+    }
+    else{
+      otherUserId = parts[0];
+    }
+
     final doc = await FirebaseFirestore.instance
         .collection('users')
         .doc(otherUserId)
@@ -49,6 +56,12 @@ class ChatListScreen extends StatelessWidget {
           : StreamBuilder<List<ChatModel>>(
         stream: ChatService().getChats(currentUser.uid),
         builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Center(
+              child: Text('Đã có lỗi xảy ra:\n${snapshot.error}', textAlign: TextAlign.center,),
+            );
+          }
+
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
