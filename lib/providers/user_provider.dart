@@ -15,10 +15,11 @@ class UserProvider extends ChangeNotifier {
     final currentUser = _authService.currentUser;
     if (currentUser != null) {
       _userSubscription?.cancel();
-      _userSubscription = UserService().streamUser(currentUser.uid).listen((updatedUser) {
-        _user = updatedUser;
-        notifyListeners();
-      });
+      _userSubscription =
+          UserService().streamUser(currentUser.uid).listen((updatedUser) {
+            _user = updatedUser;
+            notifyListeners();
+          });
     }
   }
 
@@ -26,13 +27,13 @@ class UserProvider extends ChangeNotifier {
     _user = updatedUser;
     notifyListeners();
   }
+
   void clearUser() {
     _user = null;
     _userSubscription?.cancel();
     notifyListeners();
   }
 
-<<<<<<< HEAD
   void followUserLocal(String targetUserId) {
     if (_user != null && !_user!.following.contains(targetUserId)) {
       _user!.following.add(targetUserId);
@@ -59,6 +60,8 @@ class UserProvider extends ChangeNotifier {
       _user!.savedPosts.remove(postId);
       notifyListeners();
     }
+  }
+
   @override
   void dispose() {
     _userSubscription?.cancel();
