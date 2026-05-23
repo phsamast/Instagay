@@ -27,14 +27,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final user = context.watch<UserProvider>().user;
+    final userId = context.select<UserProvider, String?>((p) => p.user?.uid);
 
     final screens = [
       const FeedScreen(),
       const SearchScreen(),
       const UploadScreen(),
       const ChatListScreen(),
-      ProfileScreen(userId: user?.uid ?? ''),
+      ProfileScreen(userId: userId ?? ''),
     ];
 
     return Scaffold(

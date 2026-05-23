@@ -237,11 +237,11 @@ class _PostCardState extends State<PostCard> {
                     if (currentUser != null) {
                       if (isSaved) {
                         UserService().unsavePost(currentUser.uid, widget.post.postId);
+                        context.read<UserProvider>().unsavePostLocal(widget.post.postId);
                       } else {
                         UserService().savePost(currentUser.uid, widget.post.postId);
+                        context.read<UserProvider>().savePostLocal(widget.post.postId);
                       }
-                      // Cập nhật lại UI user provider locally
-                      context.read<UserProvider>().loadUser();
                     }
                   },
                   icon: Icon(

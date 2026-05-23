@@ -45,10 +45,11 @@ class _FeedScreenState extends State<FeedScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final user = context.watch<UserProvider>().user;
-    if (user == null) return const Center(child: CircularProgressIndicator());
+    final uid = context.select<UserProvider, String?>((p) => p.user?.uid);
+    final following = context.select<UserProvider, List<dynamic>>((p) => p.user?.following ?? []);
+    if (uid == null) return const Center(child: CircularProgressIndicator());
 
-    final followingAndMe = [user.uid, ...user.following];
+    final followingAndMe = [uid, ...following];
 
     return Scaffold(
       appBar: AppBar(

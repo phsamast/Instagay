@@ -38,4 +38,18 @@ class UserProvider extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  void savePostLocal(String postId) {
+    if (_user != null && !_user!.savedPosts.contains(postId)) {
+      _user!.savedPosts.add(postId);
+      notifyListeners();
+    }
+  }
+
+  void unsavePostLocal(String postId) {
+    if (_user != null && _user!.savedPosts.contains(postId)) {
+      _user!.savedPosts.remove(postId);
+      notifyListeners();
+    }
+  }
 }

@@ -12,6 +12,8 @@ import '../../main.dart';
 import 'edit_profile_screen.dart';
 import 'follow_list_screen.dart';
 
+import 'change_password_screen.dart';
+
 class ProfileScreen extends StatelessWidget {
   final String userId;
 
@@ -19,8 +21,8 @@ class ProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final currentUser = context.watch<UserProvider>().user;
-    final isMyProfile = currentUser?.uid == userId;
+    final currentUserId = context.select<UserProvider, String?>((p) => p.user?.uid);
+    final isMyProfile = currentUserId == userId;
     final tabCount = isMyProfile ? 2 : 1;
 
     return DefaultTabController(
@@ -34,7 +36,8 @@ class ProfileScreen extends StatelessWidget {
             }
 
             final user = userSnap.data!;
-            final isFollowing = currentUser?.following.contains(userId) ?? false;
+            final following = context.select<UserProvider, List<dynamic>>((p) => p.user?.following ?? []);
+            final isFollowing = following.contains(userId);
 
             return StreamBuilder<List<PostModel>>(
               stream: PostService().getUserPosts(userId),
@@ -53,16 +56,9 @@ class ProfileScreen extends StatelessWidget {
                       actions: [
                         if (isMyProfile)
                           IconButton(
-                            icon: const Icon(Icons.logout),
-                            onPressed: () async {
-                              // Đăng xuất
-                              await AuthService().logout();
-                              if (context.mounted) {
-                                Navigator.of(context).pushAndRemoveUntil(
-                                  MaterialPageRoute(builder: (_) => const MyApp()),
-                                  (route) => false,
-                                );
-                              }
+                            icon: const Icon(Icons.settings),
+                            onPressed: () {
+                              _showSettingsMenu(context);
                             },
                           ),
                       ],
@@ -71,7 +67,7 @@ class ProfileScreen extends StatelessWidget {
                       child: _buildProfileHeader(
                         context,
                         user: user,
-                        currentUser: currentUser,
+                        currentUserId: currentUserId,
                         isMyProfile: isMyProfile,
                         isFollowing: isFollowing,
                         postCount: posts.length,
@@ -107,6 +103,60 @@ class ProfileScreen extends StatelessWidget {
       ),
     );
   }
+
+  void _showSettingsMenu(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                margin: const EdgeInsets.symmetric(vertical: 12),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              ListTile(
+                leading: const Icon(Icons.lock),
+                title: const Text('Đổi mật khẩu'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const ChangePasswordScreen(),
+                    ),
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.logout, color: Colors.red),
+                title: const Text('Đăng xuất', style: TextStyle(color: Colors.red)),
+                onTap: () async {
+                  await AuthService().logout();
+                  if (context.mounted) {
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(builder: (_) => const MyApp()),
+                      (route) => false,
+                    );
+                  }
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
 
   Widget _buildPostsGrid(BuildContext context, List<PostModel> posts) {
     if (posts.isEmpty) {
@@ -204,7 +254,7 @@ class ProfileScreen extends StatelessWidget {
   Widget _buildProfileHeader(
       BuildContext context, {
         required UserModel user,
-        required UserModel? currentUser,
+        required String? currentUserId,
         required bool isMyProfile,
         required bool isFollowing,
         required int postCount,
@@ -297,16 +347,16 @@ class ProfileScreen extends StatelessWidget {
             )
                 : ElevatedButton(
               onPressed: () {
-                if (currentUser == null) return;
+                if (currentUserId == null) return;
                 if (isFollowing) {
                   UserService().unfollowUser(
-                    currentUserId: currentUser.uid,
+                    currentUserId: currentUserId,
                     targetUserId: user.uid,
                   );
                   context.read<UserProvider>().unfollowUserLocal(user.uid);
                 } else {
                   UserService().followUser(
-                    currentUserId: currentUser.uid,
+                    currentUserId: currentUserId,
                     targetUserId: user.uid,
                   );
                   context.read<UserProvider>().followUserLocal(user.uid);

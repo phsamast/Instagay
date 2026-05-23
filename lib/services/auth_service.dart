@@ -99,4 +99,31 @@ class AuthService {
       return null;
     }
   }
+
+  Future<String> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null || user.email == null) return 'Không tìm thấy người dùng';
+
+      final credential = EmailAuthProvider.credential(
+        email: user.email!,
+        password: currentPassword,
+      );
+
+      await user.reauthenticateWithCredential(credential);
+      await user.updatePassword(newPassword);
+      return 'success';
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'wrong-password' || e.code == 'invalid-credential') {
+        return 'Mật khẩu cũ không chính xác';
+      }
+      if (e.code == 'weak-password') return 'Mật khẩu mới quá yếu (tối thiểu 6 ký tự)';
+      return e.message ?? 'Đổi mật khẩu thất bại';
+    } catch (e) {
+      return e.toString();
+    }
+  }
 }
