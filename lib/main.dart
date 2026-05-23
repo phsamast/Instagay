@@ -8,11 +8,16 @@ import 'screens/auth/login_screen.dart';
 import 'screens/home/home_screen.dart';
 import 'services/auth_service.dart';
 
+import 'package:timeago/timeago.dart' as timeago;
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  
+  timeago.setLocaleMessages('vi', timeago.ViMessages());
+  
   runApp(const MyApp());
 }
 
@@ -26,7 +31,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => UserProvider()),
       ],
       child: MaterialApp(
-        title: 'Instagay',
+        title: 'Instagray',
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(

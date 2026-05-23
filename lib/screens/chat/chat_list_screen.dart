@@ -7,6 +7,7 @@ import '../../providers/user_provider.dart';
 import '../../services/chat_service.dart';
 import '../../services/auth_service.dart';
 import 'chat_screen.dart';
+import 'select_user_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ChatListScreen extends StatelessWidget {
@@ -14,7 +15,14 @@ class ChatListScreen extends StatelessWidget {
 
   Future<UserModel?> _getOtherUser(String chatId, String currentUserId) async {
     final parts = chatId.split('_');
-    final otherUserId = parts[0] == currentUserId ? parts[1] : parts[0];
+    String otherUserId;
+    if(parts[0]== currentUserId){
+      otherUserId = parts[1];
+    }
+    else{
+      otherUserId = parts[0];
+    }
+
     final doc = await FirebaseFirestore.instance
         .collection('users')
         .doc(otherUserId)
@@ -29,13 +37,31 @@ class ChatListScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Tin nhắn'),
+        title: const Text('Tin nhắn', style: TextStyle(fontWeight: FontWeight.bold)),
+        centerTitle: true,
+        actions: [
+          IconButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const SelectUserScreen()),
+              );
+            },
+            icon: const Icon(Icons.add_circle_outline, size: 28),
+          ),
+        ],
       ),
       body: currentUser == null
           ? const Center(child: CircularProgressIndicator())
           : StreamBuilder<List<ChatModel>>(
         stream: ChatService().getChats(currentUser.uid),
         builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Center(
+              child: Text('Đã có lỗi xảy ra:\n${snapshot.error}', textAlign: TextAlign.center,),
+            );
+          }
+
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
@@ -52,12 +78,6 @@ class ChatListScreen extends StatelessWidget {
                   const SizedBox(height: 16),
                   const Text('Chưa có tin nhắn nào'),
                   const SizedBox(height: 8),
-                  TextButton(
-                    onPressed: () {
-                      // Chuyển sang tab tìm kiếm
-                    },
-                    child: const Text('Tìm bạn bè để nhắn tin'),
-                  ),
                 ],
               ),
             );

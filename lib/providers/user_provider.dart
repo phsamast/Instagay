@@ -1,18 +1,24 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/user_model.dart';
 import '../services/auth_service.dart';
+import '../services/user_service.dart';
 
 class UserProvider extends ChangeNotifier {
   UserModel? _user;
   final AuthService _authService = AuthService();
+  StreamSubscription<UserModel>? _userSubscription;
 
   UserModel? get user => _user;
 
   Future<void> loadUser() async {
     final currentUser = _authService.currentUser;
     if (currentUser != null) {
-      _user = await _authService.getUserData(currentUser.uid);
-      notifyListeners();
+      _userSubscription?.cancel();
+      _userSubscription = UserService().streamUser(currentUser.uid).listen((updatedUser) {
+        _user = updatedUser;
+        notifyListeners();
+      });
     }
   }
 
@@ -22,9 +28,11 @@ class UserProvider extends ChangeNotifier {
   }
   void clearUser() {
     _user = null;
+    _userSubscription?.cancel();
     notifyListeners();
   }
 
+<<<<<<< HEAD
   void followUserLocal(String targetUserId) {
     if (_user != null && !_user!.following.contains(targetUserId)) {
       _user!.following.add(targetUserId);
@@ -51,5 +59,9 @@ class UserProvider extends ChangeNotifier {
       _user!.savedPosts.remove(postId);
       notifyListeners();
     }
+  @override
+  void dispose() {
+    _userSubscription?.cancel();
+    super.dispose();
   }
 }

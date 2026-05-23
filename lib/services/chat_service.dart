@@ -64,9 +64,12 @@ class ChatService {
     return _db
         .collection('chats')
         .where('participants', arrayContains: userId)
-        .orderBy('lastMessageTime', descending: true)
         .snapshots()
-        .map((snap) => snap.docs.map(ChatModel.fromDoc).toList());
+        .map((snap) {
+          final chats = snap.docs.map(ChatModel.fromDoc).toList();
+          chats.sort((a, b) => b.lastMessageTime.compareTo(a.lastMessageTime));
+          return chats;
+        });
   }
 
 

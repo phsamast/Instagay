@@ -1,0 +1,5 @@
+- [x] Update `UserService` with `getUsersByUids` method
+- [x] Create `SelectUserScreen` in `lib/screens/chat/select_user_screen.dart`
+- [x] Add `+` icon and navigation to `ChatListScreen`
+- [x] Add `+` icon and navigation to `ChatScreen`
+- [x] Verify functionality
