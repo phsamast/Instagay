@@ -10,6 +10,8 @@ import '../providers/user_provider.dart';
 import '../services/post_service.dart';
 import '../services/user_service.dart';
 import '../screens/feed/comment_screen.dart';
+import '../screens/feed/share_post_screen.dart';
+import '../screens/profile/follow_list_screen.dart';
 import '../screens/profile/profile_screen.dart';
 
 class PostCard extends StatefulWidget {
@@ -25,14 +27,15 @@ class _PostCardState extends State<PostCard> {
   VideoPlayerController? _videoController;
   ChewieController? _chewieController;
   bool _showHeart = false;
-  
+
   bool? _isLiked;
   int? _likeCount;
 
   @override
   void didUpdateWidget(PostCard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.post.postId != widget.post.postId || oldWidget.post != widget.post) {
+    if (oldWidget.post.postId != widget.post.postId ||
+        oldWidget.post != widget.post) {
       _isLiked = null;
       _likeCount = null;
     }
@@ -72,7 +75,7 @@ class _PostCardState extends State<PostCard> {
   void _handleDoubleTapLike(String? currentUserId, bool isLiked) {
     if (currentUserId == null) return;
     setState(() => _showHeart = true);
-    
+
     final currentIsLiked = _isLiked ?? widget.post.isLikedBy(currentUserId);
     final currentLikeCount = _likeCount ?? widget.post.likeCount;
 
@@ -97,9 +100,12 @@ class _PostCardState extends State<PostCard> {
   @override
   Widget build(BuildContext context) {
     final currentUser = context.watch<UserProvider>().user;
-    final isLiked = _isLiked ?? (currentUser != null && widget.post.isLikedBy(currentUser.uid));
+    final isLiked = _isLiked ??
+        (currentUser != null && widget.post.isLikedBy(currentUser.uid));
     final likeCount = _likeCount ?? widget.post.likeCount;
-    final isSaved = currentUser != null && currentUser.savedPosts.contains(widget.post.postId);
+    final isSaved = currentUser != null &&
+        currentUser.savedPosts.contains(widget.post.postId);
+    final likedUserIds = _likedUserIds(currentUser?.uid, isLiked);
 
     return VisibilityDetector(
       key: Key(widget.post.postId),
@@ -120,39 +126,98 @@ class _PostCardState extends State<PostCard> {
             child: Row(
               children: [
                 GestureDetector(
-                  onTap: () => Navigator.push(context, MaterialPageRoute(
-                    builder: (_) => ProfileScreen(userId: widget.post.ownerId),
-                  )),
+                  onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            ProfileScreen(userId: widget.post.ownerId),
+                      )),
                   child: CircleAvatar(
                     radius: 18,
                     backgroundImage: widget.post.userPhotoUrl.isNotEmpty
                         ? CachedNetworkImageProvider(widget.post.userPhotoUrl)
                         : null,
                     child: widget.post.userPhotoUrl.isEmpty
-                        ? const Icon(Icons.person) : null,
+                        ? const Icon(Icons.person)
+                        : null,
                   ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: GestureDetector(
-                    onTap: () => Navigator.push(context, MaterialPageRoute(
-                      builder: (_) => ProfileScreen(userId: widget.post.ownerId),
-                    )),
-                    child: Text(
-                      widget.post.username,
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      GestureDetector(
+                        onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  ProfileScreen(userId: widget.post.ownerId),
+                            )),
+                        child: Text(
+                          widget.post.username,
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 14),
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.music_note,
+                            size: 12,
+                            color: Colors.grey[600],
+                          ),
+                          const SizedBox(width: 2),
+                          Expanded(
+                            child: Text(
+                              'ucg. . sweet tooth',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey[600],
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
-                if (currentUser?.uid == widget.post.ownerId)
-                  PopupMenuButton(
-                    itemBuilder: (_) => [
-                      const PopupMenuItem(value: 'delete', child: Text('Xóa bài')),
-                    ],
-                    onSelected: (value) {
-                      if (value == 'delete') PostService().deletePost(widget.post.postId);
-                    },
-                  ),
+                PopupMenuButton<String>(
+                  icon: const Icon(Icons.more_horiz, color: Colors.black87),
+                  itemBuilder: (_) => [
+                    if (currentUser?.uid == widget.post.ownerId)
+                      const PopupMenuItem(
+                          value: 'delete', child: Text('Xóa bài'))
+                    else ...[
+                      const PopupMenuItem(
+                          value: 'report', child: Text('Báo cáo')),
+                      const PopupMenuItem(
+                          value: 'copy', child: Text('Sao chép liên kết')),
+                      const PopupMenuItem(
+                          value: 'share', child: Text('Chia sẻ')),
+                    ]
+                  ],
+                  onSelected: (value) {
+                    if (value == 'delete') {
+                      PostService().deletePost(widget.post.postId);
+                    } else if (value == 'copy') {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Đã sao chép liên kết!')),
+                      );
+                    } else if (value == 'share') {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Đã chia sẻ liên kết!')),
+                      );
+                    } else if (value == 'report') {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Đã báo cáo bài viết!')),
+                      );
+                    }
+                  },
+                ),
               ],
             ),
           ),
@@ -208,45 +273,68 @@ class _PostCardState extends State<PostCard> {
                   icon: Icon(
                     isLiked ? Icons.favorite : Icons.favorite_border,
                     color: isLiked ? Colors.red : Colors.black,
+                    size: 26,
                   ),
                 ),
                 IconButton(
-                  onPressed: () => Navigator.push(context, MaterialPageRoute(
-                    builder: (_) => CommentScreen(post: widget.post),
-                  )),
-                  icon: const Icon(Icons.chat_bubble_outline),
+                  onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => CommentScreen(post: widget.post),
+                      )),
+                  icon: const Icon(
+                    Icons.chat_bubble_outline,
+                    color: Colors.black,
+                    size: 26,
+                  ),
                 ),
                 IconButton(
-                  onPressed: () {}, // Nút Share (tùy chọn)
-                  icon: const Icon(Icons.send_outlined),
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => SharePostScreen(post: widget.post),
+                    ),
+                  ),
+                  icon: const Icon(
+                    Icons.send_outlined,
+                    color: Colors.black,
+                    size: 26,
+                  ),
                 ),
                 const Spacer(),
-                
+
                 // Chỉ số ảnh (nếu nhiều ảnh)
                 if (widget.post.isMultiple && !widget.post.isVideo)
                   Text(
                     '${_currentImageIndex + 1}/${widget.post.mediaUrls.length}',
                     style: const TextStyle(color: Colors.grey, fontSize: 12),
                   ),
-                  
+
                 const Spacer(),
-                
+
                 // Nút Save/Bookmark
                 IconButton(
                   onPressed: () {
                     if (currentUser != null) {
                       if (isSaved) {
-                        UserService().unsavePost(currentUser.uid, widget.post.postId);
-                        context.read<UserProvider>().unsavePostLocal(widget.post.postId);
+                        UserService()
+                            .unsavePost(currentUser.uid, widget.post.postId);
+                        context
+                            .read<UserProvider>()
+                            .unsavePostLocal(widget.post.postId);
                       } else {
-                        UserService().savePost(currentUser.uid, widget.post.postId);
-                        context.read<UserProvider>().savePostLocal(widget.post.postId);
+                        UserService()
+                            .savePost(currentUser.uid, widget.post.postId);
+                        context
+                            .read<UserProvider>()
+                            .savePostLocal(widget.post.postId);
                       }
                     }
                   },
                   icon: Icon(
                     isSaved ? Icons.bookmark : Icons.bookmark_border,
                     color: Colors.black,
+                    size: 26,
                   ),
                 ),
               ],
@@ -256,9 +344,26 @@ class _PostCardState extends State<PostCard> {
           // ========== LƯỢT LIKE ==========
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Text(
-              '$likeCount lượt thích',
-              style: const TextStyle(fontWeight: FontWeight.bold),
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: likeCount == 0
+                  ? null
+                  : () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => FollowListScreen(
+                            title: 'Lượt thích',
+                            userIds: likedUserIds,
+                          ),
+                        ),
+                      ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Text(
+                  '$likeCount lượt thích',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
             ),
           ),
 
@@ -311,6 +416,19 @@ class _PostCardState extends State<PostCard> {
     );
   }
 
+  List<String> _likedUserIds(String? currentUserId, bool isLiked) {
+    final ids = widget.post.likes.keys.map((id) => id.toString()).toList();
+    if (currentUserId == null) return ids;
+
+    final containsCurrentUser = ids.contains(currentUserId);
+    if (isLiked && !containsCurrentUser) {
+      ids.insert(0, currentUserId);
+    } else if (!isLiked && containsCurrentUser) {
+      ids.remove(currentUserId);
+    }
+    return ids;
+  }
+
   Widget _buildImageCarousel(currentUser) {
     if (widget.post.mediaUrls.isEmpty) return const SizedBox.shrink();
 
@@ -339,7 +457,8 @@ class _PostCardState extends State<PostCard> {
           height: 300,
           child: PageView.builder(
             itemCount: widget.post.mediaUrls.length,
-            onPageChanged: (index) => setState(() => _currentImageIndex = index),
+            onPageChanged: (index) =>
+                setState(() => _currentImageIndex = index),
             itemBuilder: (_, index) => CachedNetworkImage(
               imageUrl: widget.post.mediaUrls[index],
               fit: BoxFit.cover,
@@ -359,7 +478,7 @@ class _PostCardState extends State<PostCard> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: List.generate(
               widget.post.mediaUrls.length,
-                  (index) => Container(
+              (index) => Container(
                 margin: const EdgeInsets.symmetric(horizontal: 3),
                 width: _currentImageIndex == index ? 8 : 6,
                 height: _currentImageIndex == index ? 8 : 6,

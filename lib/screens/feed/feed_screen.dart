@@ -5,9 +5,9 @@ import '../../services/post_service.dart';
 import '../../services/story_service.dart';
 import '../../models/post_model.dart';
 import '../../models/story_model.dart';
-import '../../services/auth_service.dart';
 import '../../widgets/post_card.dart';
 import '../../widgets/story_bar.dart';
+import '../upload/upload_screen.dart';
 import 'activity_screen.dart';
 
 class FeedScreen extends StatefulWidget {
@@ -36,7 +36,6 @@ class _FeedScreenState extends State<FeedScreen> {
   void _onScroll() {
     if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent - 200) {
-      // Khi cuộn gần cuối trang, tăng số lượng bài viết lấy về
       setState(() {
         _postLimit += 5;
       });
@@ -46,32 +45,42 @@ class _FeedScreenState extends State<FeedScreen> {
   @override
   Widget build(BuildContext context) {
     final uid = context.select<UserProvider, String?>((p) => p.user?.uid);
-    final following = context.select<UserProvider, List<dynamic>>((p) => p.user?.following ?? []);
+    final following = context
+        .select<UserProvider, List<dynamic>>((p) => p.user?.following ?? []);
     if (uid == null) return const Center(child: CircularProgressIndicator());
 
     final followingAndMe = [uid, ...following];
 
     return Scaffold(
       appBar: AppBar(
+        centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.add, size: 28),
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const UploadScreen()),
+            );
+          },
+        ),
         title: const Text(
           'Instagay',
           style: TextStyle(
             fontFamily: 'serif',
-            fontWeight: FontWeight.bold,
-            fontSize: 24,
+            fontStyle: FontStyle.italic,
+            fontWeight: FontWeight.w700,
+            fontSize: 26,
+            letterSpacing: 0.5,
           ),
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.favorite_border),
+            icon: const Icon(Icons.favorite_border, size: 26),
             onPressed: () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => const ActivityScreen()));
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.send_outlined),
-            onPressed: () {
-              // TODO: Điều hướng sang Chat
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ActivityScreen()),
+              );
             },
           ),
         ],
@@ -95,27 +104,25 @@ class _FeedScreenState extends State<FeedScreen> {
                 },
               ),
             ),
-
             const SliverToBoxAdapter(child: Divider(height: 1)),
-
             StreamBuilder<List<PostModel>>(
               stream: PostService().getFeedPosts(followingAndMe, _postLimit),
               builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting && _postLimit == 5) {
+                if (snapshot.connectionState == ConnectionState.waiting &&
+                    _postLimit == 5) {
                   return const SliverFillRemaining(
                     child: Center(child: CircularProgressIndicator()),
                   );
                 }
 
                 if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                  // Fallback: nếu following không có bài viết nào, hiển thị Khám phá
                   return _buildFallbackExplore();
                 }
 
                 final posts = snapshot.data!;
                 return SliverList(
                   delegate: SliverChildBuilderDelegate(
-                        (context, index) {
+                    (context, index) {
                       if (index == posts.length) {
                         return const Padding(
                           padding: EdgeInsets.all(16.0),
@@ -124,7 +131,8 @@ class _FeedScreenState extends State<FeedScreen> {
                       }
                       return PostCard(post: posts[index]);
                     },
-                    childCount: posts.length + (posts.length >= _postLimit ? 1 : 0),
+                    childCount:
+                        posts.length + (posts.length >= _postLimit ? 1 : 0),
                   ),
                 );
               },
@@ -145,7 +153,11 @@ class _FeedScreenState extends State<FeedScreen> {
             const SizedBox(height: 16),
             Text(
               'Chào mừng đến với Instagay',
-              style: TextStyle(color: Colors.grey[800], fontSize: 18, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: Colors.grey[800],
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 8),
             Text(

@@ -1,36 +1,43 @@
 import 'dart:io';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:uuid/uuid.dart';
-import '../models/post_model.dart';
+
 import '../models/comment_model.dart';
-import 'storage_service.dart';
+import '../models/post_model.dart';
 import 'notification_service.dart';
+import 'storage_service.dart';
 
 class PostService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   final _uuid = const Uuid();
 
-  // ==================== ĐĂNG BÀI (ảnh hoặc video) ====================
   Future<String> uploadPost({
-    required List<File> mediaFiles, // Hỗ trợ nhiều file
-    required String mediaType,      // 'image' hoặc 'video'
+    required List<File> mediaFiles,
+    required String mediaType,
     required String description,
     required String userId,
     required String username,
     required String userPhotoUrl,
+    List<Map<String, dynamic>> taggedUsers = const [],
+    void Function(double progress)? onProgress,
   }) async {
     try {
       final postId = _uuid.v4();
-      List<String> mediaUrls = [];
+      var mediaUrls = <String>[];
 
       if (mediaType == 'video') {
-        // Upload video
-        final url = await StorageService.uploadVideo(mediaFiles.first);
+        final url = await StorageService.uploadVideo(
+          mediaFiles.first,
+          onProgress: onProgress,
+        );
         if (url == null) return 'Lỗi upload video';
         mediaUrls = [url];
       } else {
-        // Upload nhiều ảnh
-        mediaUrls = await StorageService.uploadMultipleImages(mediaFiles);
+        mediaUrls = await StorageService.uploadMultipleImages(
+          mediaFiles,
+          onProgress: onProgress,
+        );
         if (mediaUrls.isEmpty) return 'Lỗi upload ảnh';
       }
 
@@ -44,16 +51,25 @@ class PostService {
         description: description,
         likes: {},
         timestamp: Timestamp.now(),
+        taggedUsers: taggedUsers,
       );
 
       await _db.collection('posts').doc(postId).set(post.toMap());
+      await _notifyTaggedUsers(
+        taggedUsers: taggedUsers,
+        fromUserId: userId,
+        fromUsername: username,
+        fromUserPhotoUrl: userPhotoUrl,
+        type: 'tag_post',
+        postId: postId,
+        mediaUrl: mediaUrls.isNotEmpty ? mediaUrls.first : null,
+      );
       return 'success';
     } catch (e) {
       return e.toString();
     }
   }
 
-  // ==================== LẤY FEED ====================
   Stream<List<PostModel>> getAllPosts() {
     return _db
         .collection('posts')
@@ -67,9 +83,8 @@ class PostService {
     if (followingAndMe.isEmpty) {
       return Stream.value([]);
     }
-    // Firebase whereIn limit is 10
     final queryList = followingAndMe.take(10).toList();
-    
+
     return _db
         .collection('posts')
         .where('ownerId', whereIn: queryList)
@@ -88,19 +103,25 @@ class PostService {
         .map((snap) => snap.docs.map(PostModel.fromDoc).toList());
   }
 
+  Future<PostModel?> getPostById(String postId) async {
+    final doc = await _db.collection('posts').doc(postId).get();
+    if (!doc.exists) return null;
+    return PostModel.fromDoc(doc);
+  }
+
   Future<List<PostModel>> getSavedPosts(List savedIds) async {
     if (savedIds.isEmpty) return [];
-    final List<PostModel> posts = [];
+    final posts = <PostModel>[];
     for (var i = 0; i < savedIds.length; i += 10) {
       final chunk = savedIds.skip(i).take(10).toList();
-      final snap = await _db.collection('posts').where('postId', whereIn: chunk).get();
+      final snap =
+          await _db.collection('posts').where('postId', whereIn: chunk).get();
       posts.addAll(snap.docs.map(PostModel.fromDoc));
     }
     posts.sort((a, b) => b.timestamp.compareTo(a.timestamp));
     return posts;
   }
 
-  // ==================== LIKE ====================
   Future<void> likePost({
     required String postId,
     required String userId,
@@ -111,8 +132,7 @@ class PostService {
       await ref.update({'likes.$userId': FieldValue.delete()});
     } else {
       await ref.update({'likes.$userId': true});
-      
-      // Gửi thông báo Like
+
       final postSnap = await ref.get();
       if (postSnap.exists) {
         final post = PostModel.fromDoc(postSnap);
@@ -126,14 +146,14 @@ class PostService {
             fromUserPhotoUrl: userData['photoUrl'] ?? '',
             type: 'like',
             postId: postId,
-            postMediaUrl: post.mediaUrls.isNotEmpty ? post.mediaUrls.first : null,
+            postMediaUrl:
+                post.mediaUrls.isNotEmpty ? post.mediaUrls.first : null,
           );
         }
       }
     }
   }
 
-  // ==================== COMMENT ====================
   Future<void> addComment({
     required String postId,
     required String userId,
@@ -158,7 +178,6 @@ class PostService {
         .doc(commentId)
         .set(comment.toMap());
 
-    // Gửi thông báo Comment
     final postSnap = await _db.collection('posts').doc(postId).get();
     if (postSnap.exists) {
       final post = PostModel.fromDoc(postSnap);
@@ -169,6 +188,7 @@ class PostService {
         fromUserPhotoUrl: userPhotoUrl,
         type: 'comment',
         postId: postId,
+        commentId: commentId,
         postMediaUrl: post.mediaUrls.isNotEmpty ? post.mediaUrls.first : null,
         commentText: text,
       );
@@ -187,5 +207,30 @@ class PostService {
 
   Future<void> deletePost(String postId) async {
     await _db.collection('posts').doc(postId).delete();
+  }
+
+  Future<void> _notifyTaggedUsers({
+    required List<Map<String, dynamic>> taggedUsers,
+    required String fromUserId,
+    required String fromUsername,
+    required String fromUserPhotoUrl,
+    required String type,
+    String? postId,
+    String? mediaUrl,
+  }) async {
+    final sentIds = <String>{};
+    for (final taggedUser in taggedUsers) {
+      final taggedUserId = taggedUser['uid']?.toString() ?? '';
+      if (taggedUserId.isEmpty || !sentIds.add(taggedUserId)) continue;
+      await NotificationService().sendNotification(
+        toUserId: taggedUserId,
+        fromUserId: fromUserId,
+        fromUsername: fromUsername,
+        fromUserPhotoUrl: fromUserPhotoUrl,
+        type: type,
+        postId: postId,
+        postMediaUrl: mediaUrl,
+      );
+    }
   }
 }

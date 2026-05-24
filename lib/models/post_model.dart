@@ -5,11 +5,12 @@ class PostModel {
   final String ownerId;
   final String username;
   final String userPhotoUrl;
-  final List<String> mediaUrls; // Hỗ trợ nhiều ảnh/video
-  final String mediaType; // 'image' hoặc 'video'
+  final List<String> mediaUrls;
+  final String mediaType;
   final String description;
   final Map<String, dynamic> likes;
   final Timestamp timestamp;
+  final List<Map<String, dynamic>> taggedUsers;
 
   PostModel({
     required this.postId,
@@ -21,6 +22,7 @@ class PostModel {
     required this.description,
     required this.likes,
     required this.timestamp,
+    this.taggedUsers = const [],
   });
 
   String get mediaUrl => mediaUrls.isNotEmpty ? mediaUrls.first : '';
@@ -29,12 +31,13 @@ class PostModel {
 
   factory PostModel.fromDoc(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
-    List<String> urls = [];
+    var urls = <String>[];
     if (data['mediaUrls'] != null) {
       urls = List<String>.from(data['mediaUrls']);
     } else if (data['mediaUrl'] != null) {
       urls = [data['mediaUrl']];
     }
+
     return PostModel(
       postId: data['postId'] ?? '',
       ownerId: data['ownerId'] ?? '',
@@ -45,6 +48,11 @@ class PostModel {
       description: data['description'] ?? '',
       likes: Map<String, dynamic>.from(data['likes'] ?? {}),
       timestamp: data['timestamp'] ?? Timestamp.now(),
+      taggedUsers: List<Map<String, dynamic>>.from(
+        (data['taggedUsers'] ?? []).map(
+          (item) => Map<String, dynamic>.from(item),
+        ),
+      ),
     );
   }
 
@@ -59,6 +67,7 @@ class PostModel {
       'description': description,
       'likes': likes,
       'timestamp': timestamp,
+      'taggedUsers': taggedUsers,
     };
   }
 

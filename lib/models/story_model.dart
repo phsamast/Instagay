@@ -8,6 +8,7 @@ class StoryModel {
   final String mediaUrl;
   final Timestamp timestamp;
   final List<String> viewers;
+  final List<Map<String, dynamic>> taggedUsers;
 
   StoryModel({
     required this.storyId,
@@ -17,6 +18,7 @@ class StoryModel {
     required this.mediaUrl,
     required this.timestamp,
     required this.viewers,
+    this.taggedUsers = const [],
   });
 
   factory StoryModel.fromDoc(DocumentSnapshot doc) {
@@ -29,6 +31,11 @@ class StoryModel {
       mediaUrl: data['mediaUrl'] ?? '',
       timestamp: data['timestamp'] ?? Timestamp.now(),
       viewers: List<String>.from(data['viewers'] ?? []),
+      taggedUsers: List<Map<String, dynamic>>.from(
+        (data['taggedUsers'] ?? []).map(
+          (item) => Map<String, dynamic>.from(item),
+        ),
+      ),
     );
   }
 
@@ -41,6 +48,7 @@ class StoryModel {
       'mediaUrl': mediaUrl,
       'timestamp': timestamp,
       'viewers': viewers,
+      'taggedUsers': taggedUsers,
     };
   }
 

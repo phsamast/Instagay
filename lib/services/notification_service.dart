@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:uuid/uuid.dart';
+
 import '../models/notification_model.dart';
 
 class NotificationService {
@@ -11,12 +12,13 @@ class NotificationService {
     required String fromUserId,
     required String fromUsername,
     required String fromUserPhotoUrl,
-    required String type, // 'like', 'comment', 'follow'
+    required String type,
     String? postId,
+    String? storyId,
+    String? commentId,
     String? postMediaUrl,
     String? commentText,
   }) async {
-    // Không tự thông báo cho chính mình
     if (toUserId == fromUserId) return;
 
     final id = _uuid.v4();
@@ -28,6 +30,8 @@ class NotificationService {
       fromUserPhotoUrl: fromUserPhotoUrl,
       type: type,
       postId: postId,
+      storyId: storyId,
+      commentId: commentId,
       postMediaUrl: postMediaUrl,
       commentText: commentText,
       timestamp: Timestamp.now(),

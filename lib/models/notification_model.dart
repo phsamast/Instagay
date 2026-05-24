@@ -6,8 +6,10 @@ class NotificationModel {
   final String fromUserId;
   final String fromUsername;
   final String fromUserPhotoUrl;
-  final String type; // 'like', 'comment', 'follow'
+  final String type;
   final String? postId;
+  final String? storyId;
+  final String? commentId;
   final String? postMediaUrl;
   final String? commentText;
   final Timestamp timestamp;
@@ -21,6 +23,8 @@ class NotificationModel {
     required this.fromUserPhotoUrl,
     required this.type,
     this.postId,
+    this.storyId,
+    this.commentId,
     this.postMediaUrl,
     this.commentText,
     required this.timestamp,
@@ -37,6 +41,8 @@ class NotificationModel {
       fromUserPhotoUrl: data['fromUserPhotoUrl'] ?? '',
       type: data['type'] ?? '',
       postId: data['postId'],
+      storyId: data['storyId'],
+      commentId: data['commentId'],
       postMediaUrl: data['postMediaUrl'],
       commentText: data['commentText'],
       timestamp: data['timestamp'] ?? Timestamp.now(),
@@ -52,6 +58,8 @@ class NotificationModel {
       'fromUserPhotoUrl': fromUserPhotoUrl,
       'type': type,
       'postId': postId,
+      'storyId': storyId,
+      'commentId': commentId,
       'postMediaUrl': postMediaUrl,
       'commentText': commentText,
       'timestamp': timestamp,
