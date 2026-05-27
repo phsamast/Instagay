@@ -188,4 +188,16 @@ class PostService {
   Future<void> deletePost(String postId) async {
     await _db.collection('posts').doc(postId).delete();
   }
+
+  Future<PostModel?> getPostById(String postId) async {
+    try {
+      final snap = await _db.collection('posts').doc(postId).get();
+      if (snap.exists) {
+        return PostModel.fromDoc(snap);
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
 }

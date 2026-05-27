@@ -11,6 +11,7 @@ import '../services/post_service.dart';
 import '../services/user_service.dart';
 import '../screens/feed/comment_screen.dart';
 import '../screens/profile/profile_screen.dart';
+import 'share_bottom_sheet.dart';
 
 class PostCard extends StatefulWidget {
   final PostModel post;
@@ -73,6 +74,16 @@ class _PostCardState extends State<PostCard> {
     Future.delayed(const Duration(milliseconds: 800), () {
       if (mounted) setState(() => _showHeart = false);
     });
+  }
+
+  void _showShareBottomSheet(BuildContext context, String? currentUserId) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => ShareBottomSheet(
+        post: widget.post,
+        currentUserId: currentUserId,
+      ),
+    );
   }
 
   @override
@@ -193,8 +204,8 @@ class _PostCardState extends State<PostCard> {
                   icon: const Icon(Icons.chat_bubble_outline),
                 ),
                 IconButton(
-                  onPressed: () {}, // Nút Share (tùy chọn)
-                  icon: const Icon(Icons.send_outlined),
+                  onPressed: () => _showShareBottomSheet(context, currentUser?.uid),
+                  icon: const Icon(Icons.ios_share),
                 ),
                 const Spacer(),
                 

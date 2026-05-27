@@ -1,3 +1,4 @@
+import 'package:clone_mxh/screens/chat/chat_list_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/user_provider.dart';
@@ -70,7 +71,7 @@ class _FeedScreenState extends State<FeedScreen> {
           IconButton(
             icon: const Icon(Icons.send_outlined),
             onPressed: () {
-              // TODO: Điều hướng sang Chat
+              Navigator.push(context, MaterialPageRoute(builder: (_) => ChatListScreen()));
             },
           ),
         ],
@@ -143,7 +144,7 @@ class _FeedScreenState extends State<FeedScreen> {
             Icon(Icons.photo_outlined, size: 64, color: Colors.grey[300]),
             const SizedBox(height: 16),
             Text(
-              'Chào mừng đến với Instagay',
+              'Chào mừng đến với Instagray',
               style: TextStyle(color: Colors.grey[800], fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
