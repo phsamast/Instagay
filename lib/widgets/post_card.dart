@@ -27,6 +27,8 @@ class _PostCardState extends State<PostCard> {
   VideoPlayerController? _videoController;
   ChewieController? _chewieController;
   bool _showHeart = false;
+  bool _isDeleting = false;
+  bool _isDeleted = false;
 
   bool? _isLiked;
   int? _likeCount;
@@ -97,8 +99,30 @@ class _PostCardState extends State<PostCard> {
     });
   }
 
+  Future<void> _deletePost() async {
+    if (_isDeleting) return;
+    setState(() => _isDeleting = true);
+
+    try {
+      await PostService().deletePost(widget.post.postId);
+      if (!mounted) return;
+      setState(() => _isDeleted = true);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Đã xóa bài viết')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isDeleting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Không thể xóa bài viết: $e')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (_isDeleted) return const SizedBox.shrink();
+
     final currentUser = context.watch<UserProvider>().user;
     final isLiked = _isLiked ??
         (currentUser != null && widget.post.isLikedBy(currentUser.uid));
@@ -200,9 +224,10 @@ class _PostCardState extends State<PostCard> {
                           value: 'share', child: Text('Chia sẻ')),
                     ]
                   ],
+                  enabled: !_isDeleting,
                   onSelected: (value) {
                     if (value == 'delete') {
-                      PostService().deletePost(widget.post.postId);
+                      _deletePost();
                     } else if (value == 'copy') {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(content: Text('Đã sao chép liên kết!')),
@@ -486,7 +511,7 @@ class _PostCardState extends State<PostCard> {
                   shape: BoxShape.circle,
                   color: _currentImageIndex == index
                       ? Colors.white
-                      : Colors.white.withOpacity(0.5),
+                      : Colors.white.withValues(alpha: 0.5),
                 ),
               ),
             ),

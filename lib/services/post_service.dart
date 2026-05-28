@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -83,15 +84,27 @@ class PostService {
     if (followingAndMe.isEmpty) {
       return Stream.value([]);
     }
-    final queryList = followingAndMe.take(10).toList();
+    final ownerIds = followingAndMe.map((id) => id.toString()).toSet().toList();
+    final streams = <Stream<List<PostModel>>>[];
 
-    return _db
-        .collection('posts')
-        .where('ownerId', whereIn: queryList)
-        .orderBy('timestamp', descending: true)
-        .limit(limit)
-        .snapshots()
-        .map((snap) => snap.docs.map(PostModel.fromDoc).toList());
+    for (var i = 0; i < ownerIds.length; i += 10) {
+      final chunk = ownerIds.skip(i).take(10).toList();
+      streams.add(
+        _db
+            .collection('posts')
+            .where('ownerId', whereIn: chunk)
+            .orderBy('timestamp', descending: true)
+            .limit(limit)
+            .snapshots()
+            .map((snap) => snap.docs.map(PostModel.fromDoc).toList()),
+      );
+    }
+
+    if (streams.length == 1) {
+      return streams.first.map((posts) => _sortAndLimit(posts, limit));
+    }
+
+    return _combinePostStreams(streams, limit);
   }
 
   Stream<List<PostModel>> getUserPosts(String userId) {
@@ -206,7 +219,110 @@ class PostService {
   }
 
   Future<void> deletePost(String postId) async {
-    await _db.collection('posts').doc(postId).delete();
+    final postRef = _db.collection('posts').doc(postId);
+    final postSnap = await postRef.get();
+    if (!postSnap.exists) return;
+
+    await _deletePostComments(postRef);
+    await _removePostFromSavedLists(postId);
+    await postRef.delete();
+    try {
+      await _deletePostNotifications(postId);
+    } catch (_) {
+      // Notification cleanup can fail if collection-group rules/indexes are
+      // not deployed yet. The post itself is already removed at this point.
+    }
+  }
+
+  List<PostModel> _sortAndLimit(List<PostModel> posts, int limit) {
+    posts.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+    if (posts.length <= limit) return posts;
+    return posts.take(limit).toList();
+  }
+
+  Stream<List<PostModel>> _combinePostStreams(
+    List<Stream<List<PostModel>>> streams,
+    int limit,
+  ) {
+    late StreamController<List<PostModel>> controller;
+    final latestPosts = List<List<PostModel>?>.filled(streams.length, null);
+    final subscriptions = <StreamSubscription<List<PostModel>>>[];
+
+    controller = StreamController<List<PostModel>>(
+      onListen: () {
+        for (var i = 0; i < streams.length; i++) {
+          subscriptions.add(
+            streams[i].listen(
+              (posts) {
+                latestPosts[i] = posts;
+                final merged = latestPosts
+                    .whereType<List<PostModel>>()
+                    .expand((items) => items)
+                    .toList();
+                controller.add(_sortAndLimit(merged, limit));
+              },
+              onError: controller.addError,
+            ),
+          );
+        }
+      },
+      onCancel: () async {
+        for (final subscription in subscriptions) {
+          await subscription.cancel();
+        }
+      },
+    );
+
+    return controller.stream;
+  }
+
+  Future<void> _deletePostComments(DocumentReference postRef) async {
+    while (true) {
+      final comments = await postRef.collection('comments').limit(400).get();
+      if (comments.docs.isEmpty) break;
+
+      final batch = _db.batch();
+      for (final comment in comments.docs) {
+        batch.delete(comment.reference);
+      }
+      await batch.commit();
+    }
+  }
+
+  Future<void> _removePostFromSavedLists(String postId) async {
+    while (true) {
+      final users = await _db
+          .collection('users')
+          .where('savedPosts', arrayContains: postId)
+          .limit(400)
+          .get();
+      if (users.docs.isEmpty) break;
+
+      final batch = _db.batch();
+      for (final user in users.docs) {
+        batch.update(user.reference, {
+          'savedPosts': FieldValue.arrayRemove([postId]),
+        });
+      }
+      await batch.commit();
+    }
+  }
+
+  Future<void> _deletePostNotifications(String postId) async {
+    while (true) {
+      final notifications = await _db
+          .collectionGroup('notifications')
+          .where('postId', isEqualTo: postId)
+          .limit(400)
+          .get();
+      if (notifications.docs.isEmpty) break;
+
+      final batch = _db.batch();
+      for (final notification in notifications.docs) {
+        batch.delete(notification.reference);
+      }
+      await batch.commit();
+    }
   }
 
   Future<void> _notifyTaggedUsers({

@@ -97,31 +97,33 @@ class _StoryViewScreenState extends State<StoryViewScreen>
                 child: Row(
                   children: List.generate(
                     widget.stories.length,
-                        (index) => Expanded(
+                    (index) => Expanded(
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 2),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(2),
                           child: index == _currentIndex
                               ? AnimatedBuilder(
-                            animation: _progressController,
-                            builder: (_, __) => LinearProgressIndicator(
-                              value: _progressController.value,
-                              backgroundColor: Colors.white.withOpacity(0.4),
-                              valueColor: const AlwaysStoppedAnimation(
-                                Colors.white,
-                              ),
-                              minHeight: 3,
-                            ),
-                          )
+                                  animation: _progressController,
+                                  builder: (_, __) => LinearProgressIndicator(
+                                    value: _progressController.value,
+                                    backgroundColor:
+                                        Colors.white.withValues(alpha: 0.4),
+                                    valueColor: const AlwaysStoppedAnimation(
+                                      Colors.white,
+                                    ),
+                                    minHeight: 3,
+                                  ),
+                                )
                               : LinearProgressIndicator(
-                            value: index < _currentIndex ? 1.0 : 0.0,
-                            backgroundColor: Colors.white.withOpacity(0.4),
-                            valueColor: const AlwaysStoppedAnimation(
-                              Colors.white,
-                            ),
-                            minHeight: 3,
-                          ),
+                                  value: index < _currentIndex ? 1.0 : 0.0,
+                                  backgroundColor:
+                                      Colors.white.withValues(alpha: 0.4),
+                                  valueColor: const AlwaysStoppedAnimation(
+                                    Colors.white,
+                                  ),
+                                  minHeight: 3,
+                                ),
                         ),
                       ),
                     ),
@@ -154,7 +156,8 @@ class _StoryViewScreenState extends State<StoryViewScreen>
                           ),
                         ),
                         Text(
-                          timeago.format(story.timestamp.toDate(), locale: 'vi'),
+                          timeago.format(story.timestamp.toDate(),
+                              locale: 'vi'),
                           style: const TextStyle(
                             color: Colors.white70,
                             fontSize: 12,

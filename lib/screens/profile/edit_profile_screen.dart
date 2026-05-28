@@ -66,6 +66,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       photoUrl: photoUrl,
     );
 
+    if (!mounted) return;
     await context.read<UserProvider>().loadUser();
 
     if (mounted) {
@@ -86,17 +87,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             onPressed: _isLoading ? null : _saveProfile,
             child: _isLoading
                 ? const SizedBox(
-              height: 16,
-              width: 16,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
+                    height: 16,
+                    width: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
                 : const Text(
-              'Lưu',
-              style: TextStyle(
-                color: Colors.blue,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+                    'Lưu',
+                    style: TextStyle(
+                      color: Colors.blue,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
           ),
         ],
       ),
@@ -114,8 +115,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     backgroundImage: _newAvatar != null
                         ? FileImage(_newAvatar!)
                         : (user?.photoUrl.isNotEmpty == true
-                        ? NetworkImage(user!.photoUrl) as ImageProvider
-                        : null),
+                            ? NetworkImage(user!.photoUrl) as ImageProvider
+                            : null),
                     child: user?.photoUrl.isEmpty == true && _newAvatar == null
                         ? const Icon(Icons.person, size: 50)
                         : null,
