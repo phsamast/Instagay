@@ -56,6 +56,7 @@ class PostService {
       );
 
       await _db.collection('posts').doc(postId).set(post.toMap());
+
       await _notifyTaggedUsers(
         taggedUsers: taggedUsers,
         fromUserId: userId,
@@ -65,6 +66,7 @@ class PostService {
         postId: postId,
         mediaUrl: mediaUrls.isNotEmpty ? mediaUrls.first : null,
       );
+
       return 'success';
     } catch (e) {
       return e.toString();
@@ -84,11 +86,13 @@ class PostService {
     if (followingAndMe.isEmpty) {
       return Stream.value([]);
     }
+
     final ownerIds = followingAndMe.map((id) => id.toString()).toSet().toList();
     final streams = <Stream<List<PostModel>>>[];
 
     for (var i = 0; i < ownerIds.length; i += 10) {
       final chunk = ownerIds.skip(i).take(10).toList();
+
       streams.add(
         _db
             .collection('posts')
@@ -117,21 +121,35 @@ class PostService {
   }
 
   Future<PostModel?> getPostById(String postId) async {
-    final doc = await _db.collection('posts').doc(postId).get();
-    if (!doc.exists) return null;
-    return PostModel.fromDoc(doc);
+    try {
+      final doc = await _db.collection('posts').doc(postId).get();
+
+      if (!doc.exists) {
+        return null;
+      }
+
+      return PostModel.fromDoc(doc);
+    } catch (e) {
+      return null;
+    }
   }
 
   Future<List<PostModel>> getSavedPosts(List savedIds) async {
     if (savedIds.isEmpty) return [];
+
     final posts = <PostModel>[];
+
     for (var i = 0; i < savedIds.length; i += 10) {
       final chunk = savedIds.skip(i).take(10).toList();
+
       final snap =
-          await _db.collection('posts').where('postId', whereIn: chunk).get();
+      await _db.collection('posts').where('postId', whereIn: chunk).get();
+
       posts.addAll(snap.docs.map(PostModel.fromDoc));
     }
+
     posts.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+
     return posts;
   }
 
@@ -141,17 +159,21 @@ class PostService {
     required bool isLiked,
   }) async {
     final ref = _db.collection('posts').doc(postId);
+
     if (isLiked) {
       await ref.update({'likes.$userId': FieldValue.delete()});
     } else {
       await ref.update({'likes.$userId': true});
 
       final postSnap = await ref.get();
+
       if (postSnap.exists) {
         final post = PostModel.fromDoc(postSnap);
         final userSnap = await _db.collection('users').doc(userId).get();
+
         if (userSnap.exists) {
           final userData = userSnap.data() as Map<String, dynamic>;
+
           NotificationService().sendNotification(
             toUserId: post.ownerId,
             fromUserId: userId,
@@ -160,7 +182,7 @@ class PostService {
             type: 'like',
             postId: postId,
             postMediaUrl:
-                post.mediaUrls.isNotEmpty ? post.mediaUrls.first : null,
+            post.mediaUrls.isNotEmpty ? post.mediaUrls.first : null,
           );
         }
       }
@@ -175,6 +197,7 @@ class PostService {
     required String text,
   }) async {
     final commentId = _uuid.v4();
+
     final comment = CommentModel(
       commentId: commentId,
       postId: postId,
@@ -184,6 +207,7 @@ class PostService {
       text: text,
       timestamp: Timestamp.now(),
     );
+
     await _db
         .collection('posts')
         .doc(postId)
@@ -192,8 +216,10 @@ class PostService {
         .set(comment.toMap());
 
     final postSnap = await _db.collection('posts').doc(postId).get();
+
     if (postSnap.exists) {
       final post = PostModel.fromDoc(postSnap);
+
       NotificationService().sendNotification(
         toUserId: post.ownerId,
         fromUserId: userId,
@@ -221,11 +247,13 @@ class PostService {
   Future<void> deletePost(String postId) async {
     final postRef = _db.collection('posts').doc(postId);
     final postSnap = await postRef.get();
+
     if (!postSnap.exists) return;
 
     await _deletePostComments(postRef);
     await _removePostFromSavedLists(postId);
     await postRef.delete();
+
     try {
       await _deletePostNotifications(postId);
     } catch (_) {
@@ -236,14 +264,18 @@ class PostService {
 
   List<PostModel> _sortAndLimit(List<PostModel> posts, int limit) {
     posts.sort((a, b) => b.timestamp.compareTo(a.timestamp));
-    if (posts.length <= limit) return posts;
+
+    if (posts.length <= limit) {
+      return posts;
+    }
+
     return posts.take(limit).toList();
   }
 
   Stream<List<PostModel>> _combinePostStreams(
-    List<Stream<List<PostModel>>> streams,
-    int limit,
-  ) {
+      List<Stream<List<PostModel>>> streams,
+      int limit,
+      ) {
     late StreamController<List<PostModel>> controller;
     final latestPosts = List<List<PostModel>?>.filled(streams.length, null);
     final subscriptions = <StreamSubscription<List<PostModel>>>[];
@@ -253,12 +285,14 @@ class PostService {
         for (var i = 0; i < streams.length; i++) {
           subscriptions.add(
             streams[i].listen(
-              (posts) {
+                  (posts) {
                 latestPosts[i] = posts;
+
                 final merged = latestPosts
                     .whereType<List<PostModel>>()
                     .expand((items) => items)
                     .toList();
+
                 controller.add(_sortAndLimit(merged, limit));
               },
               onError: controller.addError,
@@ -279,12 +313,15 @@ class PostService {
   Future<void> _deletePostComments(DocumentReference postRef) async {
     while (true) {
       final comments = await postRef.collection('comments').limit(400).get();
+
       if (comments.docs.isEmpty) break;
 
       final batch = _db.batch();
+
       for (final comment in comments.docs) {
         batch.delete(comment.reference);
       }
+
       await batch.commit();
     }
   }
@@ -296,14 +333,17 @@ class PostService {
           .where('savedPosts', arrayContains: postId)
           .limit(400)
           .get();
+
       if (users.docs.isEmpty) break;
 
       final batch = _db.batch();
+
       for (final user in users.docs) {
         batch.update(user.reference, {
           'savedPosts': FieldValue.arrayRemove([postId]),
         });
       }
+
       await batch.commit();
     }
   }
@@ -315,12 +355,15 @@ class PostService {
           .where('postId', isEqualTo: postId)
           .limit(400)
           .get();
+
       if (notifications.docs.isEmpty) break;
 
       final batch = _db.batch();
+
       for (final notification in notifications.docs) {
         batch.delete(notification.reference);
       }
+
       await batch.commit();
     }
   }
@@ -335,9 +378,14 @@ class PostService {
     String? mediaUrl,
   }) async {
     final sentIds = <String>{};
+
     for (final taggedUser in taggedUsers) {
       final taggedUserId = taggedUser['uid']?.toString() ?? '';
-      if (taggedUserId.isEmpty || !sentIds.add(taggedUserId)) continue;
+
+      if (taggedUserId.isEmpty || !sentIds.add(taggedUserId)) {
+        continue;
+      }
+
       await NotificationService().sendNotification(
         toUserId: taggedUserId,
         fromUserId: fromUserId,

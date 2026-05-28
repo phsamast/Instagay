@@ -5,6 +5,9 @@ class MessageModel {
   final String senderId;
   final String text;
   final String? imageUrl;
+  final String? mediaUrl;
+  final String? mediaType; // 'image' hoặc 'video'
+  final String? sharedPostId; // ID của bài viết được share
   final Timestamp timestamp;
   final bool isRead;
 
@@ -13,6 +16,9 @@ class MessageModel {
     required this.senderId,
     required this.text,
     this.imageUrl,
+    this.mediaUrl,
+    this.mediaType,
+    this.sharedPostId,
     required this.timestamp,
     required this.isRead,
   });
@@ -24,6 +30,9 @@ class MessageModel {
       senderId: data['senderId'] ?? '',
       text: data['text'] ?? '',
       imageUrl: data['imageUrl'],
+      mediaUrl: data['mediaUrl'],
+      mediaType: data['mediaType'],
+      sharedPostId: data['sharedPostId'],
       timestamp: data['timestamp'] ?? Timestamp.now(),
       isRead: data['isRead'] ?? false,
     );
@@ -35,6 +44,9 @@ class MessageModel {
       'senderId': senderId,
       'text': text,
       'imageUrl': imageUrl,
+      'mediaUrl': mediaUrl,
+      'mediaType': mediaType,
+      'sharedPostId': sharedPostId,
       'timestamp': timestamp,
       'isRead': isRead,
     };

@@ -1,5 +1,7 @@
+import 'package:clone_mxh/screens/chat/chat_list_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../providers/user_provider.dart';
 import '../../services/post_service.dart';
 import '../../services/story_service.dart';
@@ -45,9 +47,13 @@ class _FeedScreenState extends State<FeedScreen> {
   @override
   Widget build(BuildContext context) {
     final uid = context.select<UserProvider, String?>((p) => p.user?.uid);
-    final following = context
-        .select<UserProvider, List<dynamic>>((p) => p.user?.following ?? []);
-    if (uid == null) return const Center(child: CircularProgressIndicator());
+    final following = context.select<UserProvider, List<dynamic>>(
+          (p) => p.user?.following ?? [],
+    );
+
+    if (uid == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
     final followingAndMe = [uid, ...following];
 
@@ -83,6 +89,15 @@ class _FeedScreenState extends State<FeedScreen> {
               );
             },
           ),
+          IconButton(
+            icon: const Icon(Icons.send_outlined),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ChatListScreen()),
+              );
+            },
+          ),
         ],
       ),
       body: RefreshIndicator(
@@ -99,7 +114,10 @@ class _FeedScreenState extends State<FeedScreen> {
               child: StreamBuilder<List<StoryModel>>(
                 stream: StoryService().getActiveStories(),
                 builder: (context, snapshot) {
-                  if (!snapshot.hasData) return const SizedBox.shrink();
+                  if (!snapshot.hasData) {
+                    return const SizedBox.shrink();
+                  }
+
                   return StoryBar(stories: snapshot.data!);
                 },
               ),
@@ -120,19 +138,21 @@ class _FeedScreenState extends State<FeedScreen> {
                 }
 
                 final posts = snapshot.data!;
+
                 return SliverList(
                   delegate: SliverChildBuilderDelegate(
-                    (context, index) {
+                        (context, index) {
                       if (index == posts.length) {
                         return const Padding(
                           padding: EdgeInsets.all(16.0),
                           child: Center(child: CircularProgressIndicator()),
                         );
                       }
+
                       return PostCard(post: posts[index]);
                     },
                     childCount:
-                        posts.length + (posts.length >= _postLimit ? 1 : 0),
+                    posts.length + (posts.length >= _postLimit ? 1 : 0),
                   ),
                 );
               },
