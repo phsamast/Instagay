@@ -6,6 +6,7 @@ import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 import '../models/post_model.dart';
+import '../models/comment_model.dart';
 import '../providers/user_provider.dart';
 import '../services/post_service.dart';
 import '../services/user_service.dart';
@@ -246,6 +247,34 @@ class _PostCardState extends State<PostCard> {
             child: Text(
               '${widget.post.likeCount} lượt thích',
               style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+
+          // ========== SỐ LƯỢNG BÌNH LUẬN ==========
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+            child: StreamBuilder<List<CommentModel>>(
+              stream: PostService().getComments(widget.post.postId),
+              builder: (context, snapshot) {
+                final commentCount = snapshot.data?.length ?? 0;
+                return GestureDetector(
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => CommentScreen(post: widget.post),
+                    ),
+                  ),
+                  child: Text(
+                    commentCount > 0
+                        ? 'Xem tất cả $commentCount bình luận'
+                        : 'Chưa có bình luận nào',
+                    style: const TextStyle(
+                      color: Colors.grey,
+                      fontSize: 14,
+                    ),
+                  ),
+                );
+              },
             ),
           ),
 
