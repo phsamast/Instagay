@@ -156,8 +156,8 @@ class _UploadScreenState extends State<UploadScreen>
   }
 
   Future<void> _uploadStory() async {
-    if (_imageFiles.isEmpty) {
-      _showSnackBar('Vui lòng chọn ảnh cho story');
+    if (_imageFiles.isEmpty && _videoFile == null) {
+      _showSnackBar('Vui lòng chọn ảnh hoặc video cho story');
       return;
     }
 
@@ -166,7 +166,8 @@ class _UploadScreenState extends State<UploadScreen>
 
     _startUploading('Đang đăng story...');
     final result = await StoryService().uploadStory(
-      imageFile: _imageFiles.first,
+      mediaFile: _isVideo ? _videoFile! : _imageFiles.first,
+      mediaType: _isVideo ? 'video' : 'image',
       userId: user.uid,
       username: user.username,
       userPhotoUrl: user.photoUrl,
@@ -529,6 +530,52 @@ class _UploadScreenState extends State<UploadScreen>
   }
 
   Widget _buildStoryPreview() {
+    if (_isVideo &&
+        _videoController != null &&
+        _videoController!.value.isInitialized) {
+      return _previewFrame(
+        key: const ValueKey('story-video'),
+        aspectRatio: 9 / 16,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            SizedBox.expand(
+              child: FittedBox(
+                fit: BoxFit.cover,
+                child: SizedBox(
+                  width: _videoController!.value.size.width,
+                  height: _videoController!.value.size.height,
+                  child: VideoPlayer(_videoController!),
+                ),
+              ),
+            ),
+            IconButton.filled(
+              onPressed: () {
+                setState(() {
+                  _videoController!.value.isPlaying
+                      ? _videoController!.pause()
+                      : _videoController!.play();
+                });
+              },
+              icon: Icon(
+                _videoController!.value.isPlaying
+                    ? Icons.pause
+                    : Icons.play_arrow,
+                size: 34,
+              ),
+            ),
+            Positioned(
+              right: 12,
+              bottom: 12,
+              child: _mediaBadge(
+                _formatDuration(_videoController!.value.duration),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     if (_imageFiles.isNotEmpty) {
       return _previewFrame(
         key: const ValueKey('story-image'),
@@ -565,7 +612,7 @@ class _UploadScreenState extends State<UploadScreen>
 
     return _emptyPicker(
       key: const ValueKey('empty-story'),
-      title: 'Chọn ảnh cho story',
+      title: 'Chọn ảnh hoặc video cho story',
       icon: Icons.auto_awesome,
       aspectRatio: 9 / 16,
       onTap: _showImageOptions,
@@ -637,16 +684,14 @@ class _UploadScreenState extends State<UploadScreen>
             onPressed: _isLoading ? null : _showImageOptions,
           ),
         ),
-        if (!isStory) ...[
-          const SizedBox(width: 10),
-          Expanded(
-            child: _actionButton(
-              icon: Icons.videocam_outlined,
-              label: 'Video',
-              onPressed: _isLoading ? null : _showVideoOptions,
-            ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _actionButton(
+            icon: Icons.videocam_outlined,
+            label: 'Video',
+            onPressed: _isLoading ? null : _showVideoOptions,
           ),
-        ],
+        ),
         const SizedBox(width: 10),
         Expanded(
           child: _actionButton(
@@ -992,6 +1037,15 @@ class _UploadScreenState extends State<UploadScreen>
                 _pickMultipleImages();
               },
             ),
+            if (_tabController.index == 1)
+              ListTile(
+                leading: const Icon(Icons.video_library_outlined),
+                title: const Text('Chọn video từ thư viện'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickVideo(ImageSource.gallery);
+                },
+              ),
             ListTile(
               leading: const Icon(Icons.photo_camera_outlined),
               title: const Text('Chụp ảnh'),

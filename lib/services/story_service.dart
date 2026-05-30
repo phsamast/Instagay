@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:uuid/uuid.dart';
 
 import '../models/story_model.dart';
+import '../models/user_model.dart';
 import 'notification_service.dart';
 import 'storage_service.dart';
 
@@ -12,7 +13,8 @@ class StoryService {
   final _uuid = const Uuid();
 
   Future<String> uploadStory({
-    required File imageFile,
+    required File mediaFile,
+    required String mediaType,
     required String userId,
     required String username,
     required String userPhotoUrl,
@@ -21,11 +23,11 @@ class StoryService {
   }) async {
     try {
       final storyId = _uuid.v4();
-      final mediaUrl = await StorageService.uploadImage(
-        imageFile,
-        onProgress: onProgress,
-      );
-      if (mediaUrl == null) return 'Lỗi upload ảnh';
+      final mediaUrl = mediaType == 'video'
+          ? await StorageService.uploadVideo(mediaFile, onProgress: onProgress)
+          : await StorageService.uploadImage(mediaFile, onProgress: onProgress);
+
+      if (mediaUrl == null) return 'Lỗi upload story';
 
       final story = StoryModel(
         storyId: storyId,
@@ -33,6 +35,7 @@ class StoryService {
         username: username,
         userPhotoUrl: userPhotoUrl,
         mediaUrl: mediaUrl,
+        mediaType: mediaType,
         timestamp: Timestamp.now(),
         viewers: [],
         taggedUsers: taggedUsers,
@@ -79,6 +82,27 @@ class StoryService {
     await _db.collection('stories').doc(storyId).update({
       'viewers': FieldValue.arrayUnion([viewerId]),
     });
+  }
+
+  Future<void> deleteStory(String storyId) async {
+    await _db.collection('stories').doc(storyId).delete();
+  }
+
+  Future<List<UserModel>> getStoryViewers(List<String> viewerIds) async {
+    if (viewerIds.isEmpty) return [];
+
+    final viewers = <UserModel>[];
+    for (var i = 0; i < viewerIds.length; i += 30) {
+      final chunk = viewerIds.sublist(
+        i,
+        i + 30 > viewerIds.length ? viewerIds.length : i + 30,
+      );
+      final snap =
+          await _db.collection('users').where('uid', whereIn: chunk).get();
+      viewers.addAll(snap.docs.map(UserModel.fromDoc));
+    }
+
+    return viewers;
   }
 
   Future<void> _notifyTaggedUsers({

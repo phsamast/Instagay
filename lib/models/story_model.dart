@@ -6,6 +6,7 @@ class StoryModel {
   final String username;
   final String userPhotoUrl;
   final String mediaUrl;
+  final String mediaType;
   final Timestamp timestamp;
   final List<String> viewers;
   final List<Map<String, dynamic>> taggedUsers;
@@ -16,6 +17,7 @@ class StoryModel {
     required this.username,
     required this.userPhotoUrl,
     required this.mediaUrl,
+    this.mediaType = 'image',
     required this.timestamp,
     required this.viewers,
     this.taggedUsers = const [],
@@ -29,6 +31,7 @@ class StoryModel {
       username: data['username'] ?? '',
       userPhotoUrl: data['userPhotoUrl'] ?? '',
       mediaUrl: data['mediaUrl'] ?? '',
+      mediaType: data['mediaType'] ?? 'image',
       timestamp: data['timestamp'] ?? Timestamp.now(),
       viewers: List<String>.from(data['viewers'] ?? []),
       taggedUsers: List<Map<String, dynamic>>.from(
@@ -46,6 +49,7 @@ class StoryModel {
       'username': username,
       'userPhotoUrl': userPhotoUrl,
       'mediaUrl': mediaUrl,
+      'mediaType': mediaType,
       'timestamp': timestamp,
       'viewers': viewers,
       'taggedUsers': taggedUsers,
@@ -57,4 +61,6 @@ class StoryModel {
     final storyTime = timestamp.toDate();
     return now.difference(storyTime).inHours >= 24;
   }
+
+  bool get isVideo => mediaType == 'video';
 }
