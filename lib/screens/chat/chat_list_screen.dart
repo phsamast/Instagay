@@ -17,8 +17,7 @@ class ChatListScreen extends StatefulWidget {
 }
 
 class _ChatListScreenState extends State<ChatListScreen> {
-  Future<UserModel?> _getOtherUser(
-      String chatId, String currentUserId) async {
+  Future<UserModel?> _getOtherUser(String chatId, String currentUserId) async {
     final parts = chatId.split('_');
     String otherUserId;
 
@@ -40,13 +39,10 @@ class _ChatListScreenState extends State<ChatListScreen> {
     return null;
   }
 
-  Future<List<UserModel>> _getSuggestedUsers(
-      String currentUserId) async {
+  Future<List<UserModel>> _getSuggestedUsers(String currentUserId) async {
     try {
-      final snapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .limit(10)
-          .get();
+      final snapshot =
+          await FirebaseFirestore.instance.collection('users').limit(10).get();
 
       return snapshot.docs
           .map((doc) => UserModel.fromDoc(doc))
@@ -85,109 +81,105 @@ class _ChatListScreenState extends State<ChatListScreen> {
       body: currentUser == null
           ? const Center(child: CircularProgressIndicator())
           : StreamBuilder<List<ChatModel>>(
-        stream: ChatService().getChats(currentUser.uid),
-        builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            return Center(
-              child: Text(
-                'Đã có lỗi xảy ra:\n${snapshot.error}',
-                textAlign: TextAlign.center,
-              ),
-            );
-          }
-
-          if (snapshot.connectionState ==
-              ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(),
-            );
-          }
-
-          final chats = snapshot.data ?? [];
-
-          if (chats.isEmpty) {
-            return _buildEmptyState(currentUser);
-          }
-
-          return ListView.builder(
-            itemCount: chats.length + 1,
-            itemBuilder: (context, index) {
-              if (index == 0) {
-                return _buildSuggestedUsersSection(
-                    currentUser);
-              }
-
-              final chat = chats[index - 1];
-
-              return FutureBuilder<UserModel?>(
-                future: _getOtherUser(
-                  chat.chatId,
-                  currentUser.uid,
-                ),
-                builder: (context, userSnap) {
-                  if (!userSnap.hasData) {
-                    return const ListTile(
-                      leading: CircleAvatar(
-                        child: Icon(Icons.person),
-                      ),
-                      title: Text('...'),
-                    );
-                  }
-
-                  final otherUser = userSnap.data!;
-
-                  return ListTile(
-                    leading: CircleAvatar(
-                      backgroundImage:
-                      otherUser.photoUrl.isNotEmpty
-                          ? NetworkImage(
-                          otherUser.photoUrl)
-                          : null,
-                      child: otherUser.photoUrl.isEmpty
-                          ? const Icon(Icons.person)
-                          : null,
+              stream: ChatService().getChats(currentUser.uid),
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Text(
+                      'Đã có lỗi xảy ra:\n${snapshot.error}',
+                      textAlign: TextAlign.center,
                     ),
-                    title: Text(
-                      otherUser.username,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    subtitle: Text(
-                      chat.lastMessage,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Colors.grey,
-                      ),
-                    ),
-                    trailing: Text(
-                      timeago.format(
-                        chat.lastMessageTime.toDate(),
-                        locale: 'vi',
-                      ),
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: Colors.grey,
-                      ),
-                    ),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => ChatScreen(
-                            otherUser: otherUser,
-                          ),
-                        ),
-                      );
-                    },
                   );
-                },
-              );
-            },
-          );
-        },
-      ),
+                }
+
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(
+                    child: CircularProgressIndicator(),
+                  );
+                }
+
+                final chats = snapshot.data ?? [];
+
+                if (chats.isEmpty) {
+                  return _buildEmptyState(currentUser);
+                }
+
+                return ListView.builder(
+                  itemCount: chats.length + 1,
+                  itemBuilder: (context, index) {
+                    if (index == 0) {
+                      return _buildSuggestedUsersSection(currentUser);
+                    }
+
+                    final chat = chats[index - 1];
+
+                    return FutureBuilder<UserModel?>(
+                      future: _getOtherUser(
+                        chat.chatId,
+                        currentUser.uid,
+                      ),
+                      builder: (context, userSnap) {
+                        if (!userSnap.hasData) {
+                          return const ListTile(
+                            leading: CircleAvatar(
+                              child: Icon(Icons.person),
+                            ),
+                            title: Text('...'),
+                          );
+                        }
+
+                        final otherUser = userSnap.data!;
+
+                        return ListTile(
+                          leading: CircleAvatar(
+                            backgroundImage: otherUser.photoUrl.isNotEmpty
+                                ? NetworkImage(otherUser.photoUrl)
+                                : null,
+                            child: otherUser.photoUrl.isEmpty
+                                ? const Icon(Icons.person)
+                                : null,
+                          ),
+                          title: Text(
+                            otherUser.username,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          subtitle: Text(
+                            chat.lastMessage,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.grey,
+                            ),
+                          ),
+                          trailing: Text(
+                            timeago.format(
+                              chat.lastMessageTime.toDate(),
+                              locale: 'vi',
+                            ),
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: Colors.grey,
+                            ),
+                          ),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => ChatScreen(
+                                  otherUser: otherUser,
+                                ),
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    );
+                  },
+                );
+              },
+            ),
     );
   }
 
@@ -210,17 +202,13 @@ class _ChatListScreenState extends State<ChatListScreen> {
     );
   }
 
-  Widget _buildSuggestedUsersSection(
-      UserModel currentUser) {
+  Widget _buildSuggestedUsersSection(UserModel currentUser) {
     return FutureBuilder<List<UserModel>>(
       future: _getSuggestedUsers(currentUser.uid),
       builder: (context, snapshot) {
-        if (!snapshot.hasData ||
-            snapshot.data!.isEmpty) {
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
           return const SizedBox.shrink();
         }
-
-        final suggestedUsers = snapshot.data!;
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,

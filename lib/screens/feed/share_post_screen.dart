@@ -39,14 +39,12 @@ class _SharePostScreenState extends State<SharePostScreen> {
 
   Future<void> _loadUsers() async {
     final currentUser = context.read<UserProvider>().user;
-    if (currentUser == null) return;
+    if (currentUser == null) {
+      if (mounted) setState(() => _isLoading = false);
+      return;
+    }
 
-    final uids = <String>{
-      ...currentUser.followers.map((id) => id.toString()),
-      ...currentUser.following.map((id) => id.toString()),
-    }.where((id) => id != currentUser.uid).toList();
-
-    final users = await UserService().getUsersByUids(uids);
+    final users = await UserService().getShareableUsers(currentUser.uid);
     if (!mounted) return;
     setState(() {
       _allUsers = users;
@@ -176,7 +174,7 @@ class _SharePostScreenState extends State<SharePostScreen> {
                     ? Center(
                         child: Text(
                           _allUsers.isEmpty
-                              ? 'Bạn chưa có người theo dõi hoặc đang theo dõi ai'
+                              ? 'Chưa có người dùng khác để chia sẻ'
                               : 'Không tìm thấy người dùng nào',
                           textAlign: TextAlign.center,
                           style: const TextStyle(color: Colors.grey),
