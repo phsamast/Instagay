@@ -57,14 +57,48 @@ class UserService {
   }
 
   Future<List<UserModel>> searchUsers(String query) async {
-    if (query.isEmpty) return [];
+    final normalizedQuery = _normalizeForSearch(query);
+    if (normalizedQuery.isEmpty) return [];
+
+    try {
+      final indexedResult = await _db
+          .collection('users')
+          .where('usernameKeywords', arrayContains: normalizedQuery)
+          .limit(20)
+          .get();
+
+      final users = indexedResult.docs.map(UserModel.fromDoc).toList();
+      if (users.isNotEmpty) return users;
+    } catch (_) {
+      // Older user documents may not have usernameKeywords yet.
+    }
+
     final result = await _db
         .collection('users')
-        .where('username', isGreaterThanOrEqualTo: query)
-        .where('username', isLessThanOrEqualTo: '$query\uf8ff')
+        .where('username', isGreaterThanOrEqualTo: normalizedQuery)
+        .where('username', isLessThanOrEqualTo: '$normalizedQuery\uf8ff')
         .limit(20)
         .get();
     return result.docs.map(UserModel.fromDoc).toList();
+  }
+
+  Future<List<UserModel>> getSuggestedUsers({
+    required String currentUserId,
+    List<dynamic> following = const [],
+  }) async {
+    final snap =
+        await _db.collection('users').orderBy('username').limit(60).get();
+    final followingIds = following.map((id) => id.toString()).toSet();
+    final users = snap.docs
+        .map(UserModel.fromDoc)
+        .where(
+          (user) =>
+              user.uid != currentUserId && !followingIds.contains(user.uid),
+        )
+        .toList();
+
+    users.sort((a, b) => b.followers.length.compareTo(a.followers.length));
+    return users.take(10).toList();
   }
 
   Future<List<UserModel>> getShareableUsers(String currentUserId) async {
@@ -129,5 +163,45 @@ class UserService {
     }
 
     return users;
+  }
+
+  List<String> buildUsernameKeywords(String username) {
+    final normalized = _normalizeForSearch(username);
+    if (normalized.isEmpty) return [];
+
+    final keywords = <String>{};
+    final maxPrefixLength = normalized.length > 24 ? 24 : normalized.length;
+    for (var length = 1; length <= maxPrefixLength; length++) {
+      keywords.add(normalized.substring(0, length));
+    }
+    keywords.add(normalized);
+    return keywords.toList();
+  }
+
+  String _normalizeForSearch(String value) {
+    final lower = value.trim().toLowerCase();
+    return _foldVietnamese(lower)
+        .replaceAll(RegExp(r'[^\p{L}\p{N}_]+', unicode: true), '')
+        .trim();
+  }
+
+  String _foldVietnamese(String value) {
+    const replacements = {
+      'a': 'àáạảãâầấậẩẫăằắặẳẵ',
+      'e': 'èéẹẻẽêềếệểễ',
+      'i': 'ìíịỉĩ',
+      'o': 'òóọỏõôồốộổỗơờớợởỡ',
+      'u': 'ùúụủũưừứựửữ',
+      'y': 'ỳýỵỷỹ',
+      'd': 'đ',
+    };
+
+    var result = value;
+    for (final entry in replacements.entries) {
+      for (final char in entry.value.split('')) {
+        result = result.replaceAll(char, entry.key);
+      }
+    }
+    return result;
   }
 }

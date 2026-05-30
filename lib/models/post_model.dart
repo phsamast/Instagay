@@ -71,6 +71,32 @@ class PostModel {
     };
   }
 
+  PostModel copyWith({
+    String? postId,
+    String? ownerId,
+    String? username,
+    String? userPhotoUrl,
+    List<String>? mediaUrls,
+    String? mediaType,
+    String? description,
+    Map<String, dynamic>? likes,
+    Timestamp? timestamp,
+    List<Map<String, dynamic>>? taggedUsers,
+  }) {
+    return PostModel(
+      postId: postId ?? this.postId,
+      ownerId: ownerId ?? this.ownerId,
+      username: username ?? this.username,
+      userPhotoUrl: userPhotoUrl ?? this.userPhotoUrl,
+      mediaUrls: mediaUrls ?? this.mediaUrls,
+      mediaType: mediaType ?? this.mediaType,
+      description: description ?? this.description,
+      likes: likes ?? this.likes,
+      timestamp: timestamp ?? this.timestamp,
+      taggedUsers: taggedUsers ?? this.taggedUsers,
+    );
+  }
+
   int get likeCount => likes.length;
   bool isLikedBy(String userId) => likes.containsKey(userId);
 }

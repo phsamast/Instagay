@@ -11,6 +11,7 @@ import '../providers/user_provider.dart';
 import '../services/post_service.dart';
 import '../services/user_service.dart';
 import '../screens/feed/comment_screen.dart';
+import '../screens/feed/edit_post_screen.dart';
 import '../screens/profile/follow_list_screen.dart';
 import '../screens/profile/profile_screen.dart';
 import 'share_bottom_sheet.dart';
@@ -36,6 +37,7 @@ class _PostCardState extends State<PostCard> {
 
   bool? _isLiked;
   int? _likeCount;
+  PostModel? _editedPost;
 
   @override
   void didUpdateWidget(PostCard oldWidget) {
@@ -45,6 +47,7 @@ class _PostCardState extends State<PostCard> {
         oldWidget.post != widget.post) {
       _isLiked = null;
       _likeCount = null;
+      _editedPost = null;
     }
   }
 
@@ -86,18 +89,16 @@ class _PostCardState extends State<PostCard> {
   }
 
   void _handleDoubleTapLike(
-      String? currentUserId,
-      bool isLiked,
-      ) {
+    String? currentUserId,
+    bool isLiked,
+  ) {
     if (currentUserId == null) return;
 
     setState(() => _showHeart = true);
 
-    final currentIsLiked =
-        _isLiked ?? widget.post.isLikedBy(currentUserId);
+    final currentIsLiked = _isLiked ?? widget.post.isLikedBy(currentUserId);
 
-    final currentLikeCount =
-        _likeCount ?? widget.post.likeCount;
+    final currentLikeCount = _likeCount ?? widget.post.likeCount;
 
     if (!currentIsLiked) {
       setState(() {
@@ -146,9 +147,9 @@ class _PostCardState extends State<PostCard> {
   }
 
   void _showShareBottomSheet(
-      BuildContext context,
-      String? currentUserId,
-      ) {
+    BuildContext context,
+    String? currentUserId,
+  ) {
     showModalBottomSheet(
       context: context,
       builder: (context) => ShareBottomSheet(
@@ -158,25 +159,40 @@ class _PostCardState extends State<PostCard> {
     );
   }
 
+  Future<void> _openEditPost() async {
+    final updatedPost = await Navigator.push<PostModel>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => EditPostScreen(post: _editedPost ?? widget.post),
+      ),
+    );
+
+    if (!mounted || updatedPost == null) return;
+
+    setState(() => _editedPost = updatedPost);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Đã cập nhật bài viết')),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isDeleted) {
       return const SizedBox.shrink();
     }
 
+    final post = _editedPost ?? widget.post;
     final currentUser = context.watch<UserProvider>().user;
 
-    final isLiked = _isLiked ??
-        (currentUser != null &&
-            widget.post.isLikedBy(currentUser.uid));
+    final isLiked =
+        _isLiked ?? (currentUser != null && post.isLikedBy(currentUser.uid));
 
-    final likeCount = _likeCount ?? widget.post.likeCount;
+    final likeCount = _likeCount ?? post.likeCount;
 
-    final isSaved = currentUser != null &&
-        currentUser.savedPosts.contains(widget.post.postId);
+    final isSaved =
+        currentUser != null && currentUser.savedPosts.contains(post.postId);
 
-    final likedUserIds =
-    _likedUserIds(currentUser?.uid, isLiked);
+    final likedUserIds = _likedUserIds(currentUser?.uid, isLiked);
 
     return VisibilityDetector(
       key: Key(widget.post.postId),
@@ -195,8 +211,7 @@ class _PostCardState extends State<PostCard> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             child: Row(
               children: [
                 GestureDetector(
@@ -210,11 +225,10 @@ class _PostCardState extends State<PostCard> {
                   ),
                   child: CircleAvatar(
                     radius: 18,
-                    backgroundImage:
-                    widget.post.userPhotoUrl.isNotEmpty
+                    backgroundImage: widget.post.userPhotoUrl.isNotEmpty
                         ? CachedNetworkImageProvider(
-                      widget.post.userPhotoUrl,
-                    )
+                            widget.post.userPhotoUrl,
+                          )
                         : null,
                     child: widget.post.userPhotoUrl.isEmpty
                         ? const Icon(Icons.person)
@@ -224,8 +238,7 @@ class _PostCardState extends State<PostCard> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(
-                    crossAxisAlignment:
-                    CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       GestureDetector(
@@ -261,8 +274,7 @@ class _PostCardState extends State<PostCard> {
                                 fontSize: 11,
                                 color: Colors.grey[600],
                               ),
-                              overflow:
-                              TextOverflow.ellipsis,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
@@ -277,8 +289,12 @@ class _PostCardState extends State<PostCard> {
                   ),
                   enabled: !_isDeleting,
                   itemBuilder: (_) => [
-                    if (currentUser?.uid ==
-                        widget.post.ownerId)
+                    if (currentUser?.uid == widget.post.ownerId)
+                      const PopupMenuItem(
+                        value: 'edit',
+                        child: Text('Sửa bài viết'),
+                      ),
+                    if (currentUser?.uid == widget.post.ownerId)
                       const PopupMenuItem(
                         value: 'delete',
                         child: Text('Xóa bài'),
@@ -299,29 +315,26 @@ class _PostCardState extends State<PostCard> {
                     ]
                   ],
                   onSelected: (value) {
-                    if (value == 'delete') {
+                    if (value == 'edit') {
+                      _openEditPost();
+                    } else if (value == 'delete') {
                       _deletePost();
                     } else if (value == 'copy') {
-                      ScaffoldMessenger.of(context)
-                          .showSnackBar(
+                      ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
-                          content:
-                          Text('Đã sao chép liên kết!'),
+                          content: Text('Đã sao chép liên kết!'),
                         ),
                       );
                     } else if (value == 'share') {
-                      ScaffoldMessenger.of(context)
-                          .showSnackBar(
+                      ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           content: Text('Đã chia sẻ!'),
                         ),
                       );
                     } else if (value == 'report') {
-                      ScaffoldMessenger.of(context)
-                          .showSnackBar(
+                      ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
-                          content:
-                          Text('Đã báo cáo bài viết!'),
+                          content: Text('Đã báo cáo bài viết!'),
                         ),
                       );
                     }
@@ -330,7 +343,6 @@ class _PostCardState extends State<PostCard> {
               ],
             ),
           ),
-
           GestureDetector(
             onDoubleTap: () => _handleDoubleTapLike(
               currentUser?.uid,
@@ -343,30 +355,24 @@ class _PostCardState extends State<PostCard> {
                   _buildVideoPlayer()
                 else
                   _buildImageCarousel(),
-
                 if (_showHeart)
                   TweenAnimationBuilder(
-                    duration:
-                    const Duration(milliseconds: 300),
-                    tween:
-                    Tween<double>(begin: 0.5, end: 1.2),
-                    builder: (context, val, child) =>
-                        Transform.scale(
-                          scale: val,
-                          child: const Icon(
-                            Icons.favorite,
-                            color: Colors.white,
-                            size: 100,
-                          ),
-                        ),
+                    duration: const Duration(milliseconds: 300),
+                    tween: Tween<double>(begin: 0.5, end: 1.2),
+                    builder: (context, val, child) => Transform.scale(
+                      scale: val,
+                      child: const Icon(
+                        Icons.favorite,
+                        color: Colors.white,
+                        size: 100,
+                      ),
+                    ),
                   ),
               ],
             ),
           ),
-
           Padding(
-            padding:
-            const EdgeInsets.symmetric(horizontal: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 4),
             child: Row(
               children: [
                 IconButton(
@@ -374,9 +380,7 @@ class _PostCardState extends State<PostCard> {
                     if (currentUser != null) {
                       setState(() {
                         _isLiked = !isLiked;
-                        _likeCount = isLiked
-                            ? likeCount - 1
-                            : likeCount + 1;
+                        _likeCount = isLiked ? likeCount - 1 : likeCount + 1;
                       });
 
                       PostService().likePost(
@@ -387,11 +391,8 @@ class _PostCardState extends State<PostCard> {
                     }
                   },
                   icon: Icon(
-                    isLiked
-                        ? Icons.favorite
-                        : Icons.favorite_border,
-                    color:
-                    isLiked ? Colors.red : Colors.black,
+                    isLiked ? Icons.favorite : Icons.favorite_border,
+                    color: isLiked ? Colors.red : Colors.black,
                     size: 26,
                   ),
                 ),
@@ -399,8 +400,7 @@ class _PostCardState extends State<PostCard> {
                   onPressed: () => Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) =>
-                          CommentScreen(post: widget.post),
+                      builder: (_) => CommentScreen(post: widget.post),
                     ),
                   ),
                   icon: const Icon(
@@ -417,8 +417,7 @@ class _PostCardState extends State<PostCard> {
                   icon: const Icon(Icons.ios_share),
                 ),
                 const Spacer(),
-                if (widget.post.isMultiple &&
-                    !widget.post.isVideo)
+                if (widget.post.isMultiple && !widget.post.isVideo)
                   Text(
                     '${_currentImageIndex + 1}/${widget.post.mediaUrls.length}',
                     style: const TextStyle(
@@ -436,29 +435,23 @@ class _PostCardState extends State<PostCard> {
                           widget.post.postId,
                         );
 
-                        context
-                            .read<UserProvider>()
-                            .unsavePostLocal(
-                          widget.post.postId,
-                        );
+                        context.read<UserProvider>().unsavePostLocal(
+                              widget.post.postId,
+                            );
                       } else {
                         UserService().savePost(
                           currentUser.uid,
                           widget.post.postId,
                         );
 
-                        context
-                            .read<UserProvider>()
-                            .savePostLocal(
-                          widget.post.postId,
-                        );
+                        context.read<UserProvider>().savePostLocal(
+                              widget.post.postId,
+                            );
                       }
                     }
                   },
                   icon: Icon(
-                    isSaved
-                        ? Icons.bookmark
-                        : Icons.bookmark_border,
+                    isSaved ? Icons.bookmark : Icons.bookmark_border,
                     color: Colors.black,
                     size: 26,
                   ),
@@ -466,26 +459,23 @@ class _PostCardState extends State<PostCard> {
               ],
             ),
           ),
-
           Padding(
-            padding:
-            const EdgeInsets.symmetric(horizontal: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 12),
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: likeCount == 0
                   ? null
                   : () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => FollowListScreen(
-                    title: 'Lượt thích',
-                    userIds: likedUserIds,
-                  ),
-                ),
-              ),
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => FollowListScreen(
+                            title: 'Lượt thích',
+                            userIds: likedUserIds,
+                          ),
+                        ),
+                      ),
               child: Padding(
-                padding:
-                const EdgeInsets.symmetric(vertical: 4),
+                padding: const EdgeInsets.symmetric(vertical: 4),
                 child: Text(
                   '$likeCount lượt thích',
                   style: const TextStyle(
@@ -495,8 +485,7 @@ class _PostCardState extends State<PostCard> {
               ),
             ),
           ),
-
-          if (widget.post.description.isNotEmpty)
+          if (post.description.isNotEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(
                 horizontal: 12,
@@ -504,8 +493,7 @@ class _PostCardState extends State<PostCard> {
               ),
               child: RichText(
                 text: TextSpan(
-                  style:
-                  const TextStyle(color: Colors.black),
+                  style: const TextStyle(color: Colors.black),
                   children: [
                     TextSpan(
                       text: '${widget.post.username} ',
@@ -514,13 +502,12 @@ class _PostCardState extends State<PostCard> {
                       ),
                     ),
                     TextSpan(
-                      text: widget.post.description,
+                      text: post.description,
                     ),
                   ],
                 ),
               ),
             ),
-
           Padding(
             padding: const EdgeInsets.symmetric(
               horizontal: 12,
@@ -537,7 +524,6 @@ class _PostCardState extends State<PostCard> {
               ),
             ),
           ),
-
           const Divider(height: 8),
         ],
       ),
@@ -545,11 +531,9 @@ class _PostCardState extends State<PostCard> {
   }
 
   Widget _buildVideoPlayer() {
-    if (_chewieController != null &&
-        _videoController!.value.isInitialized) {
+    if (_chewieController != null && _videoController!.value.isInitialized) {
       return AspectRatio(
-        aspectRatio:
-        _videoController!.value.aspectRatio,
+        aspectRatio: _videoController!.value.aspectRatio,
         child: Chewie(controller: _chewieController!),
       );
     }
@@ -566,18 +550,16 @@ class _PostCardState extends State<PostCard> {
   }
 
   List<String> _likedUserIds(
-      String? currentUserId,
-      bool isLiked,
-      ) {
-    final ids =
-    widget.post.likes.keys.map((id) => id.toString()).toList();
+    String? currentUserId,
+    bool isLiked,
+  ) {
+    final ids = widget.post.likes.keys.map((id) => id.toString()).toList();
 
     if (currentUserId == null) {
       return ids;
     }
 
-    final containsCurrentUser =
-    ids.contains(currentUserId);
+    final containsCurrentUser = ids.contains(currentUserId);
 
     if (isLiked && !containsCurrentUser) {
       ids.insert(0, currentUserId);
@@ -626,8 +608,7 @@ class _PostCardState extends State<PostCard> {
             },
             itemBuilder: (_, index) {
               return CachedNetworkImage(
-                imageUrl:
-                widget.post.mediaUrls[index],
+                imageUrl: widget.post.mediaUrls[index],
                 fit: BoxFit.cover,
                 placeholder: (_, __) => Container(
                   color: Colors.grey[200],
@@ -644,17 +625,13 @@ class _PostCardState extends State<PostCard> {
           left: 0,
           right: 0,
           child: Row(
-            mainAxisAlignment:
-            MainAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: List.generate(
               widget.post.mediaUrls.length,
-                  (index) => Container(
-                margin:
-                const EdgeInsets.symmetric(horizontal: 3),
-                width:
-                _currentImageIndex == index ? 8 : 6,
-                height:
-                _currentImageIndex == index ? 8 : 6,
+              (index) => Container(
+                margin: const EdgeInsets.symmetric(horizontal: 3),
+                width: _currentImageIndex == index ? 8 : 6,
+                height: _currentImageIndex == index ? 8 : 6,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: _currentImageIndex == index

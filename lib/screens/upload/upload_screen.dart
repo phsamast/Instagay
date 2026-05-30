@@ -29,6 +29,7 @@ class _UploadScreenState extends State<UploadScreen>
   final _tagSearchController = TextEditingController();
   final _picker = ImagePicker();
   final _userService = UserService();
+  final _postService = PostService();
 
   List<File> _imageFiles = [];
   File? _videoFile;
@@ -40,8 +41,11 @@ class _UploadScreenState extends State<UploadScreen>
 
   List<UserModel> _taggedUsers = [];
   List<UserModel> _tagSearchResults = [];
+  List<HashtagResult> _hashtagSuggestions = [];
   bool _isSearchingTags = false;
+  bool _isSearchingHashtags = false;
   Timer? _tagDebounce;
+  Timer? _hashtagDebounce;
 
   @override
   void initState() {
@@ -54,14 +58,17 @@ class _UploadScreenState extends State<UploadScreen>
     _tabController.addListener(() {
       if (!_tabController.indexIsChanging) setState(() {});
     });
+    _captionController.addListener(_onCaptionChanged);
   }
 
   @override
   void dispose() {
     _tabController.dispose();
+    _captionController.removeListener(_onCaptionChanged);
     _captionController.dispose();
     _tagSearchController.dispose();
     _tagDebounce?.cancel();
+    _hashtagDebounce?.cancel();
     _videoController?.dispose();
     super.dispose();
   }
@@ -216,6 +223,7 @@ class _UploadScreenState extends State<UploadScreen>
       _uploadStatus = '';
       _taggedUsers = [];
       _tagSearchResults = [];
+      _hashtagSuggestions = [];
       _tagSearchController.clear();
       _videoController?.dispose();
       _videoController = null;
@@ -229,6 +237,73 @@ class _UploadScreenState extends State<UploadScreen>
       'username': user.username,
       'photoUrl': user.photoUrl,
     };
+  }
+
+  void _onCaptionChanged() {
+    _hashtagDebounce?.cancel();
+    _hashtagDebounce = Timer(const Duration(milliseconds: 250), () async {
+      final hashtagQuery = _currentHashtagQuery();
+      if (hashtagQuery == null || hashtagQuery.isEmpty) {
+        if (mounted) {
+          setState(() {
+            _hashtagSuggestions = [];
+            _isSearchingHashtags = false;
+          });
+        }
+        return;
+      }
+
+      setState(() => _isSearchingHashtags = true);
+
+      final suggestions = await _postService.searchHashtags('#$hashtagQuery');
+
+      if (!mounted) return;
+      setState(() {
+        _hashtagSuggestions = suggestions.take(8).toList();
+        _isSearchingHashtags = false;
+      });
+    });
+  }
+
+  String? _currentHashtagQuery() {
+    final selection = _captionController.selection;
+    if (!selection.isValid || !selection.isCollapsed) return null;
+
+    final cursor = selection.baseOffset;
+    if (cursor < 0 || cursor > _captionController.text.length) return null;
+
+    final textBeforeCursor = _captionController.text.substring(0, cursor);
+    final match = RegExp(r'(?:^|\s)#([\p{L}\p{N}_]*)$', unicode: true)
+        .firstMatch(textBeforeCursor);
+
+    return match?.group(1);
+  }
+
+  void _insertHashtag(String tag) {
+    final selection = _captionController.selection;
+    if (!selection.isValid || !selection.isCollapsed) return;
+
+    final cursor = selection.baseOffset;
+    final text = _captionController.text;
+    final textBeforeCursor = text.substring(0, cursor);
+    final match = RegExp(r'(?:^|\s)#([\p{L}\p{N}_]*)$', unicode: true)
+        .firstMatch(textBeforeCursor);
+
+    if (match == null) return;
+
+    final tokenStart = match.start;
+    final hasLeadingSpace = tokenStart < textBeforeCursor.length &&
+        textBeforeCursor[tokenStart] == ' ';
+    final replacement = '${hasLeadingSpace ? ' ' : ''}#$tag ';
+    final nextText = text.replaceRange(tokenStart, cursor, replacement);
+    final nextCursor = tokenStart + replacement.length;
+
+    _captionController.value = TextEditingValue(
+      text: nextText,
+      selection: TextSelection.collapsed(offset: nextCursor),
+    );
+
+    setState(() => _hashtagSuggestions = []);
   }
 
   void _onTagSearchChanged(String value) {
@@ -372,6 +447,7 @@ class _UploadScreenState extends State<UploadScreen>
           if (!isStory) ...[
             const SizedBox(height: 18),
             _buildCaptionField(),
+            _buildHashtagSuggestions(),
           ],
           const SizedBox(height: 18),
           _buildTagPeopleSection(),
@@ -604,6 +680,7 @@ class _UploadScreenState extends State<UploadScreen>
   Widget _buildCaptionField() {
     return TextField(
       controller: _captionController,
+      enabled: !_isLoading,
       maxLines: 4,
       textInputAction: TextInputAction.newline,
       decoration: InputDecoration(
@@ -622,6 +699,52 @@ class _UploadScreenState extends State<UploadScreen>
           borderRadius: BorderRadius.circular(16),
           borderSide: const BorderSide(color: Colors.black, width: 1.2),
         ),
+      ),
+    );
+  }
+
+  Widget _buildHashtagSuggestions() {
+    if (_isSearchingHashtags) {
+      return const Padding(
+        padding: EdgeInsets.only(top: 8),
+        child: LinearProgressIndicator(minHeight: 2),
+      );
+    }
+
+    if (_hashtagSuggestions.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.grey.shade200),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        children: _hashtagSuggestions.map((item) {
+          return ListTile(
+            dense: true,
+            leading: CircleAvatar(
+              backgroundColor: Colors.grey.shade100,
+              child: const Icon(Icons.tag, color: Colors.black),
+            ),
+            title: Text(
+              '#${item.tag}',
+              style: const TextStyle(fontWeight: FontWeight.w800),
+            ),
+            subtitle: Text('${item.postCount} bài viết'),
+            onTap: () => _insertHashtag(item.tag),
+          );
+        }).toList(),
       ),
     );
   }

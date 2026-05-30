@@ -23,5 +23,16 @@ void main() {
     expect(post.likeCount, 1);
     expect(post.isLikedBy('user-2'), isTrue);
     expect(post.isLikedBy('user-3'), isFalse);
+
+    final updatedPost = post.copyWith(
+      description: 'updated',
+      taggedUsers: [
+        {'uid': 'user-3', 'username': 'friend', 'photoUrl': ''},
+      ],
+    );
+
+    expect(updatedPost.postId, post.postId);
+    expect(updatedPost.description, 'updated');
+    expect(updatedPost.taggedUsers.first['uid'], 'user-3');
   });
 }
