@@ -25,10 +25,8 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if signedIn();
       allow create: if isOwner(userId);
-      allow update: if (
-        isOwner(userId) &&
-        changedOnly(['bio', 'photoUrl', 'following', 'savedPosts'])
-      ) || (signedIn() && changedOnly(['followers']));
+      allow update: if isOwner(userId) || (signedIn() && changedOnly(['followers']));
+      allow delete: if false;
 
       match /notifications/{notificationId} {
         allow read, update, delete: if isOwner(userId);
@@ -40,18 +38,8 @@ service cloud.firestore {
       allow read: if signedIn();
       allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid;
       allow update: if signedIn() && (
-        changedOnly(['likes']) ||
-        (
-          resource.data.ownerId == request.auth.uid &&
-          changedOnly([
-            'description',
-            'taggedUsers',
-            'hashtags',
-            'searchKeywords',
-            'updatedAt',
-            'userPhotoUrl'
-          ])
-        )
+        resource.data.ownerId == request.auth.uid ||
+        changedOnly(['likes'])
       );
       allow delete: if signedIn() && resource.data.ownerId == request.auth.uid;
 
@@ -88,12 +76,15 @@ service cloud.firestore {
             !exists(/databases/$(database)/documents/chats/$(chatId)) ||
             request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants
           );
+
         allow create: if signedIn()
           && request.resource.data.senderId == request.auth.uid
           && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
+
         allow update: if signedIn()
           && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants
           && changedOnly(['isRead']);
+
         allow delete: if false;
       }
     }
