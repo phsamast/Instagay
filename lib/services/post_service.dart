@@ -532,7 +532,6 @@ class PostService {
     final oldHashtags = _extractHashtags(post.description);
 
     await _deletePostComments(postRef);
-    await _removePostFromSavedLists(postId);
     await postRef.delete();
     await _syncHashtagCounts(oldTags: oldHashtags, newTags: const []);
 
@@ -602,28 +601,6 @@ class PostService {
 
       for (final comment in comments.docs) {
         batch.delete(comment.reference);
-      }
-
-      await batch.commit();
-    }
-  }
-
-  Future<void> _removePostFromSavedLists(String postId) async {
-    while (true) {
-      final users = await _db
-          .collection('users')
-          .where('savedPosts', arrayContains: postId)
-          .limit(400)
-          .get();
-
-      if (users.docs.isEmpty) break;
-
-      final batch = _db.batch();
-
-      for (final user in users.docs) {
-        batch.update(user.reference, {
-          'savedPosts': FieldValue.arrayRemove([postId]),
-        });
       }
 
       await batch.commit();

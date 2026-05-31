@@ -138,11 +138,12 @@ class UserService {
   }
 
   Stream<UserModel> streamUser(String userId) {
-    return _db
-        .collection('users')
-        .doc(userId)
-        .snapshots()
-        .map(UserModel.fromDoc);
+    return _db.collection('users').doc(userId).snapshots().map((doc) {
+      if (!doc.exists) {
+        throw StateError('User document does not exist: $userId');
+      }
+      return UserModel.fromDoc(doc);
+    });
   }
 
   Future<List<UserModel>> getUsersByUids(List<String> uids) async {
